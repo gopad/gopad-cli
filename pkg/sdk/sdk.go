@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	pathAuthLogin      = "%s/api/auth/login"
-	pathProfile        = "%s/api/profile/self"
-	pathProfileToken   = "%s/api/profile/token"
-	pathUsers          = "%s/api/users"
-	pathUser           = "%s/api/users/%v"
-	pathUserTeam       = "%s/api/users/%v/teams"
-	pathTeams          = "%s/api/teams"
-	pathTeam           = "%s/api/teams/%v"
-	pathTeamUser       = "%s/api/teams/%v/users"
+	pathAuthLogin    = "%s/api/auth/login"
+	pathProfile      = "%s/api/profile/self"
+	pathProfileToken = "%s/api/profile/token"
+	pathUsers        = "%s/api/users"
+	pathUser         = "%s/api/users/%v"
+	pathUserTeam     = "%s/api/users/%v/teams"
+	pathTeams        = "%s/api/teams"
+	pathTeam         = "%s/api/teams/%v"
+	pathTeamUser     = "%s/api/teams/%v/users"
 )
 
 // ClientAPI describes a client API.

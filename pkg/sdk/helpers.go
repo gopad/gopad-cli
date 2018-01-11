@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	// UserAgent defines the user agent header sent with each request.
 	UserAgent = "Gopad CLI"
 )
 

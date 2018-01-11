@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/gopad/gopad-cli/pkg/version"
+	"github.com/joho/godotenv"
 	"gopkg.in/urfave/cli.v2"
 )
 
