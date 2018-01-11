@@ -1,0 +1,62 @@
+version: '{build}'
+image: 'Visual Studio 2017'
+
+clone_folder: 'c:\gopath\src\github.com\gopad\gopad-cli'
+
+environment:
+  GOPATH: c:\gopath
+  DOCKER_USERNAME:
+    secure: '4YzzahbEiMZQJpOCOd1LAw=='
+  DOCKER_PASSWORD:
+    secure: 'VqO/G3Zfslu6zSLdwHKO+Q=='
+
+install:
+  - ps: |
+      choco install make
+  - ps: |
+      docker version
+      go version
+  - ps: |
+      $env:Path = "c:\gopath\bin;$env:Path"
+
+build_script:
+  - cmd: |
+      make retool
+  - cmd: |
+      make generate
+  - cmd: |
+      make build
+  - cmd: |
+      docker pull microsoft/nanoserver:10.0.14393.1593
+      docker build -f Dockerfile.windows -t gopad/gopad-cli:windows .
+
+test_script:
+  - cmd: |
+      docker run --rm gopad/gopad-cli:windows --help
+
+deploy_script:
+  - ps: |
+      if ( $env:APPVEYOR_PULL_REQUEST_NUMBER ) {
+        Write-Host Nothing to deploy.
+      } else {
+        docker login --username $env:DOCKER_USERNAME --password $env:DOCKER_PASSWORD
+
+        if ( $env:APPVEYOR_REPO_TAG -eq 'true' ) {
+          $major,$minor,$patch = $env:APPVEYOR_REPO_TAG_NAME.substring(1).split('.')
+
+          docker push gopad/gopad-cli:windows
+
+          docker tag gopad/gopad-cli:windows gopad/gopad-cli:$major.$minor.$patch-windows
+          docker push gopad/gopad-cli:$major.$minor.$patch-windows
+
+          docker tag gopad/gopad-cli:windows gopad/gopad-cli:$major.$minor-windows
+          docker push gopad/gopad-cli:$major.$minor-windows
+
+          docker tag gopad/gopad-cli:windows gopad/gopad-cli:$major-windows
+          docker push gopad/gopad-cli:$major-windows
+        } else {
+          if ( $env:APPVEYOR_REPO_BRANCH -eq 'master' ) {
+            docker push gopad/gopad-cli:windows
+          }
+        }
+      }

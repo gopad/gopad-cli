@@ -57,4 +57,3 @@ Apache-2.0
 ```
 Copyright (c) 2018 Thomas Boerger <thomas@webhippie.de>
 ```
-
