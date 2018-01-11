@@ -10,3 +10,41 @@ pipeline:
     restore: true
     when:
       local: false
+
+  useless-placeholder:
+    image: webhippie/golang:edge
+    pull: true
+    commands:
+      - echo "works" >| foobar
+
+  cache-rebuild:
+    image: plugins/s3-cache:1
+    pull: true
+    secrets: [ cache_s3_endpoint, cache_s3_access_key, cache_s3_secret_key ]
+    rebuild: true
+    mount:
+      - foobar
+    when:
+      local: false
+      event: [ push ]
+      branch: [ master ]
+
+  cache-flush:
+    image: plugins/s3-cache:1
+    pull: true
+    secrets: [ cache_s3_endpoint, cache_s3_access_key, cache_s3_secret_key ]
+    flush: true
+    flush_age: 14
+    when:
+      local: false
+      event: [ push ]
+      branch: [ master ]
+
+  notify-matrix:
+    image: plugins/matrix:1
+    pull: true
+    secrets: [ matrix_roomid, matrix_username, matrix_password ]
+    when:
+      local: false
+      events: [ push, tag ]
+      status: [ changed, failure ]
