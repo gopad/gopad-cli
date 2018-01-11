@@ -2,6 +2,9 @@ workspace:
   base: /srv/app
   path: src/github.com/gopad/gopad-cli
 
+branches:
+  - master
+
 pipeline:
   cache-restore:
     image: plugins/s3-cache:1
@@ -11,11 +14,204 @@ pipeline:
     when:
       local: false
 
-  useless-placeholder:
+  app-prepare:
     image: webhippie/golang:edge
     pull: true
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
     commands:
-      - echo "works" >| foobar
+      - make clean
+      - make retool
+      - make generate
+
+  app-vet:
+    image: webhippie/golang:edge
+    pull: true
+    group: app
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make vet
+
+  app-check:
+    image: webhippie/golang:edge
+    pull: true
+    group: app
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make megacheck
+
+  app-lint:
+    image: webhippie/golang:edge
+    pull: true
+    group: app
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make lint
+
+  app-test:
+    image: webhippie/golang:edge
+    pull: true
+    group: app
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make test
+
+  app-build:
+    image: webhippie/golang:edge
+    pull: true
+    group: app
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make build
+
+  app-coverage:
+    image: plugins/codacy:1
+    pull: true
+    secrets: [ codacy_token ]
+
+  app-windows:
+    image: karalabe/xgo-latest:latest
+    pull: true
+    group: release
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make release-dirs release-windows
+    when:
+      event: [ push, tag ]
+      branch: master
+
+  app-linux:
+    image: karalabe/xgo-latest:latest
+    pull: true
+    group: release
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make release-dirs release-linux
+    when:
+      event: [ push, tag ]
+      branch: master
+
+  app-darwin:
+    image: karalabe/xgo-latest:latest
+    pull: true
+    group: release
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make release-dirs release-darwin
+    when:
+      event: [ push, tag ]
+      branch: master
+
+  app-finish:
+    image: webhippie/golang:edge
+    pull: true
+    environment:
+      - CGO_ENABLED=0
+      - GOPATH=/srv/app
+      - TAGS=
+    commands:
+      - make release-copy release-check
+    when:
+      event: [ push, tag ]
+      branch: master
+
+  docker-amd64:
+    image: plugins/docker:17.05
+    pull: true
+    group: docker
+    secrets: [ docker_username, docker_password ]
+    repo: gopad/gopad-cli
+    auto_tag: true
+    auto_tag_suffix: amd64
+    when:
+      event: [push, tag]
+      branch: master
+
+  docker-i386:
+    image: plugins/docker:17.05
+    pull: true
+    group: docker
+    secrets: [ docker_username, docker_password ]
+    repo: gopad/gopad-cli
+    dockerfile: Dockerfile.i386
+    auto_tag: true
+    auto_tag_suffix: i386
+    when:
+      event: [push, tag]
+      branch: master
+
+  docker-arm64:
+    image: plugins/docker:17.05
+    pull: true
+    group: docker
+    secrets: [ docker_username, docker_password ]
+    repo: gopad/gopad-cli
+    dockerfile: Dockerfile.arm64
+    auto_tag: true
+    auto_tag_suffix: arm64
+    when:
+      event: [push, tag]
+      branch: master
+
+  docker-arm:
+    image: plugins/docker:17.05
+    pull: true
+    group: docker
+    secrets: [ docker_username, docker_password ]
+    repo: gopad/gopad-cli
+    dockerfile: Dockerfile.arm
+    auto_tag: true
+    auto_tag_suffix: arm
+    when:
+      event: [push, tag]
+      branch: master
+
+  docker-manifests:
+    image: plugins/manifest:1
+    pull: true
+    secrets: [ docker_username, docker_password ]
+    spec: manifest.yml
+    auto_tag: true
+    ignore_missing: true
+    when:
+      event: [ push, tag ]
+      branch: master
+
+  docker-microbadger:
+    image: plugins/webhook:1
+    pull: true
+    secrets:
+      - source: microbadger_token
+        target: plugin_urls
+    when:
+      event: [ push, tag ]
+      branch: master
 
   cache-rebuild:
     image: plugins/s3-cache:1
@@ -23,11 +219,12 @@ pipeline:
     secrets: [ cache_s3_endpoint, cache_s3_access_key, cache_s3_secret_key ]
     rebuild: true
     mount:
-      - foobar
+      - _tools/bin
+      - _tools/pkg
     when:
       local: false
       event: [ push ]
-      branch: [ master ]
+      branch: master
 
   cache-flush:
     image: plugins/s3-cache:1
@@ -38,7 +235,41 @@ pipeline:
     when:
       local: false
       event: [ push ]
-      branch: [ master ]
+      branch: master
+
+  archive-release:
+    image: plugins/s3:1
+    pull: true
+    secrets: [ s3_endpoint, aws_access_key_id, aws_secret_access_key, s3_bucket ]
+    source: dist/release/*
+    target: /gopad/cli/master
+    strip_prefix: dist/release/
+    path_style: true
+    when:
+      event: [ push ]
+      branch: master
+
+  archive-release:
+    image: plugins/s3:1
+    pull: true
+    secrets: [ s3_endpoint, aws_access_key_id, aws_secret_access_key, s3_bucket ]
+    source: dist/release/*
+    target: /gopad/cli/${DRONE_TAG##v}
+    strip_prefix: dist/release/
+    path_style: true
+    when:
+      event: [ tag ]
+      branch: master
+
+  github-release:
+    image: plugins/github-release:1
+    pull: true
+    secrets: [ github_token ]
+    files:
+      - dist/release/*
+    when:
+      event: [ tag ]
+      branch: master
 
   notify-matrix:
     image: plugins/matrix:1
