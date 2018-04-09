@@ -9,4 +9,4 @@ LABEL maintainer="Thomas Boerger <thomas@webhippie.de>" `
 ENTRYPOINT ["c:\\gopad-cli.exe"]
 CMD ["help"]
 
-COPY gopad-cli.exe c:\gopad-cli.exe
+COPY bin/gopad-cli.exe c:\gopad-cli.exe

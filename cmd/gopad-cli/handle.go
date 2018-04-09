@@ -5,12 +5,12 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/gopad/gopad-cli/pkg/sdk"
+	"github.com/gopad/gopad-go/gopad"
 	"gopkg.in/urfave/cli.v2"
 )
 
 // HandleFunc is the real handle implementation.
-type HandleFunc func(c *cli.Context, client sdk.ClientAPI) error
+type HandleFunc func(c *cli.Context, client gopad.ClientAPI) error
 
 // Handle wraps the command function handler.
 func Handle(c *cli.Context, fn HandleFunc) error {
@@ -18,32 +18,32 @@ func Handle(c *cli.Context, fn HandleFunc) error {
 		server = c.String("server")
 		token  = c.String("token")
 
-		client sdk.ClientAPI
+		client gopad.ClientAPI
 	)
 
 	if server == "" {
-		fmt.Fprintf(os.Stderr, "Error: you must provide the server address.\n")
+		fmt.Fprintf(os.Stderr, "error: you must provide the server address.\n")
 		os.Exit(1)
 	}
 
 	if _, err := url.Parse(server); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: invalid server address, bad format?.\n")
+		fmt.Fprintf(os.Stderr, "error: invalid server address, bad format?.\n")
 		os.Exit(1)
 	}
 
 	if token == "" {
-		client = sdk.NewClient(
+		client = gopad.NewClient(
 			server,
 		)
 	} else {
-		client = sdk.NewClientToken(
+		client = gopad.NewClientToken(
 			server,
 			token,
 		)
 	}
 
 	if err := fn(c, client); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
 		os.Exit(2)
 	}
 

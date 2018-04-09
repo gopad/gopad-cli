@@ -21,12 +21,12 @@ You can download prebuilt binaries from the GitHub releases or from our [downloa
 
 ## Development
 
-Make sure you have a working Go environment, for further reference or a guide take a look at the [install instructions](http://golang.org/doc/install.html). As this project relies on vendoring of the dependencies you have to use a Go version `>= 1.6`. It is also possible to just simply execute the `go get github.com/gopad/gopad-cli/cmd/gopad-cli` command, but we prefer to use our `Makefile`:
+Make sure you have a working Go environment, for further reference or a guide take a look at the [install instructions](http://golang.org/doc/install.html). This project requires Go >= v1.8.
 
 ```bash
 go get -d github.com/gopad/gopad-cli
 cd $GOPATH/src/github.com/gopad/gopad-cli
-make clean build
+make clean generate build
 
 ./gopad-cli -h
 ```
@@ -34,7 +34,7 @@ make clean build
 
 ## Security
 
-If you find a security issue please contact thomas@webhippie.de first.
+If you find a security issue please contact gopad@webhippie.de first.
 
 
 ## Contributing

@@ -14,7 +14,7 @@ pipeline:
     when:
       local: false
 
-  app-prepare:
+  cli-prepare:
     image: webhippie/golang:edge
     pull: true
     environment:
@@ -24,12 +24,13 @@ pipeline:
     commands:
       - make clean
       - make retool
+      - make sync
       - make generate
 
-  app-vet:
+  cli-vet:
     image: webhippie/golang:edge
     pull: true
-    group: app
+    group: cli
     environment:
       - CGO_ENABLED=0
       - GOPATH=/srv/app
@@ -37,10 +38,10 @@ pipeline:
     commands:
       - make vet
 
-  app-check:
+  cli-check:
     image: webhippie/golang:edge
     pull: true
-    group: app
+    group: cli
     environment:
       - CGO_ENABLED=0
       - GOPATH=/srv/app
@@ -48,10 +49,10 @@ pipeline:
     commands:
       - make megacheck
 
-  app-lint:
+  cli-lint:
     image: webhippie/golang:edge
     pull: true
-    group: app
+    group: cli
     environment:
       - CGO_ENABLED=0
       - GOPATH=/srv/app
@@ -59,10 +60,10 @@ pipeline:
     commands:
       - make lint
 
-  app-test:
+  cli-test:
     image: webhippie/golang:edge
     pull: true
-    group: app
+    group: cli
     environment:
       - CGO_ENABLED=0
       - GOPATH=/srv/app
@@ -70,10 +71,10 @@ pipeline:
     commands:
       - make test
 
-  app-build:
+  cli-build:
     image: webhippie/golang:edge
     pull: true
-    group: app
+    group: cli
     environment:
       - CGO_ENABLED=0
       - GOPATH=/srv/app
@@ -81,12 +82,7 @@ pipeline:
     commands:
       - make build
 
-  app-coverage:
-    image: plugins/codacy:1
-    pull: true
-    secrets: [ codacy_token ]
-
-  app-windows:
+  cli-windows:
     image: karalabe/xgo-latest:latest
     pull: true
     group: release
@@ -100,7 +96,7 @@ pipeline:
       event: [ push, tag ]
       branch: master
 
-  app-linux:
+  cli-linux:
     image: karalabe/xgo-latest:latest
     pull: true
     group: release
@@ -114,7 +110,7 @@ pipeline:
       event: [ push, tag ]
       branch: master
 
-  app-darwin:
+  cli-darwin:
     image: karalabe/xgo-latest:latest
     pull: true
     group: release
@@ -128,7 +124,7 @@ pipeline:
       event: [ push, tag ]
       branch: master
 
-  app-finish:
+  cli-finish:
     image: webhippie/golang:edge
     pull: true
     environment:
@@ -219,8 +215,8 @@ pipeline:
     secrets: [ cache_s3_endpoint, cache_s3_access_key, cache_s3_secret_key ]
     rebuild: true
     mount:
-      - _tools/bin
-      - _tools/pkg
+      - _tools
+      - vendor
     when:
       local: false
       event: [ push ]

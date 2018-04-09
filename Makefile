@@ -12,7 +12,6 @@ endif
 
 PACKAGES ?= $(shell go list ./... | grep -v /vendor/ | grep -v /_tools/)
 SOURCES ?= $(shell find . -name "*.go" -type f -not -path "./vendor/*" -not -path "./_tools/*")
-GENERATE ?= $(IMPORT)/pkg/sdk
 
 TAGS ?=
 
@@ -21,9 +20,9 @@ ifndef VERSION
 		VERSION ?= $(subst v,,$(DRONE_TAG))
 	else
 		ifneq ($(DRONE_BRANCH),)
-			VERSION ?= $(DRONE_BRANCH)
+			VERSION ?= 0.0.0-$(subst /,,$(DRONE_BRANCH))
 		else
-			VERSION ?= master
+			VERSION ?= 0.0.0-master
 		endif
 	endif
 endif
@@ -36,7 +35,7 @@ ifndef DATE
 	DATE := $(shell date -u '+%Y%m%d')
 endif
 
-LDFLAGS += -s -w -X "$(IMPORT)/pkg/version.VersionDev=$(SHA)" -X "$(IMPORT)/pkg/version.VersionDate=$(DATE)"
+LDFLAGS += -s -w -X "$(IMPORT)/pkg/version.VersionString=$(VERSION)" -X "$(IMPORT)/pkg/version.VersionDev=$(SHA)" -X "$(IMPORT)/pkg/version.VersionDate=$(DATE)"
 
 .PHONY: all
 all: build
@@ -47,17 +46,12 @@ update:
 
 .PHONY: sync
 sync:
-	retool sync
 	retool do dep ensure
-
-.PHONY: graph
-graph:
-	retool do dep status -dot | dot -T png -o docs/deps.png
 
 .PHONY: clean
 clean:
 	go clean -i ./...
-	rm -rf $(EXECUTABLE) $(DIST)
+	rm -rf bin/ $(DIST)/binaries $(DIST)/release
 
 .PHONY: fmt
 fmt:
@@ -77,7 +71,7 @@ lint:
 
 .PHONY: generate
 generate:
-	retool do go generate $(GENERATE)
+	retool do go generate $(PACKAGES)
 
 .PHONY: test
 test:
@@ -88,9 +82,9 @@ install: $(SOURCES)
 	go install -v -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/$(NAME)
 
 .PHONY: build
-build: $(EXECUTABLE)
+build: bin/$(EXECUTABLE)
 
-$(EXECUTABLE): $(SOURCES)
+bin/$(EXECUTABLE): $(SOURCES)
 	go build -i -v -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $@ ./cmd/$(NAME)
 
 .PHONY: release
@@ -143,4 +137,5 @@ retool:
 ifndef HAS_RETOOL
 	go get -u github.com/twitchtv/retool
 endif
+	retool sync
 	retool build

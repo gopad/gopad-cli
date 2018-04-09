@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/gopad/gopad-cli/pkg/version"
@@ -11,8 +10,6 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	if env := os.Getenv("GOPAD_ENV_FILE"); env != "" {
 		godotenv.Load(env)
 	}
@@ -55,7 +52,7 @@ func main() {
 	cli.HelpFlag = &cli.BoolFlag{
 		Name:    "help",
 		Aliases: []string{"h"},
-		Usage:   "hhow the help, so what you see now",
+		Usage:   "show the help, so what you see now",
 	}
 
 	cli.VersionFlag = &cli.BoolFlag{

@@ -21,7 +21,13 @@ install:
 
 build_script:
   - cmd: |
+      yarn install
+  - cmd: |
+      yarn build
+  - cmd: |
       make retool
+  - cmd: |
+      make sync
   - cmd: |
       make generate
   - cmd: |
