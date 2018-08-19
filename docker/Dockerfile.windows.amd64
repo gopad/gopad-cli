@@ -1,5 +1,5 @@
 # escape=`
-FROM microsoft/nanoserver:10.0.14393.1593
+FROM microsoft/nanoserver:10.0.14393.2430
 
 LABEL maintainer="Thomas Boerger <thomas@webhippie.de>" `
   org.label-schema.name="Gopad CLI" `
