@@ -1,6 +1,7 @@
 # Gopad: CLI client
 
 [![Build Status](http://drone.gopad.tech/api/badges/gopad/gopad-cli/status.svg)](http://drone.gopad.tech/gopad/gopad-cli)
+[![Build Status](https://ci.appveyor.com/api/projects/status/qj9esfrpi3e7nd7d?svg=true)](https://ci.appveyor.com/project/gopadz/gopad-cli)
 [![Stories in Ready](https://badge.waffle.io/gopad/gopad-api.svg?label=ready&title=Ready)](http://waffle.io/gopad/gopad-api)
 [![Join the Matrix chat at https://matrix.to/#/#gopad:matrix.org](https://img.shields.io/badge/matrix-%23gopad%3Amatrix.org-7bc9a4.svg)](https://matrix.to/#/#gopad:matrix.org)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/8b885bc21c374fa3a5e661b3ad9d9a65)](https://www.codacy.com/app/gopad/gopad-cli?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=gopad/gopad-cli&amp;utm_campaign=Badge_Grade)

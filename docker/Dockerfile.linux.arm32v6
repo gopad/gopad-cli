@@ -14,4 +14,4 @@ CMD ["help"]
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /etc/mime.types /etc/
 
-COPY dist/binaries/gopad-cli-*-linux-arm-5 /usr/bin/
+COPY dist/binaries/gopad-cli-*-linux-arm-6 /usr/bin/

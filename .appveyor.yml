@@ -6,9 +6,9 @@ clone_folder: 'c:\gopath\src\github.com\gopad\gopad-cli'
 environment:
   GOPATH: c:\gopath
   DOCKER_USERNAME:
-    secure: '4YzzahbEiMZQJpOCOd1LAw=='
+    secure: 'NNXSKPexXrgkFtU8lFTLxg=='
   DOCKER_PASSWORD:
-    secure: 'VqO/G3Zfslu6zSLdwHKO+Q=='
+    secure: 'I4nO04vJWbZs8rXkeohe8tEvnF8UXfbBgZX2ptz6V9Q='
 
 install:
   - ps: |
@@ -29,11 +29,11 @@ build_script:
   - cmd: |
       make build
   - cmd: |
-      docker build -f Dockerfile.windows -t gopad/gopad-cli:windows .
+      docker build -f docker/Dockerfile.windows.amd64 -t gopad/gopad-cli:windows-amd64 .
 
 test_script:
   - cmd: |
-      docker run --rm gopad/gopad-cli:windows --help
+      docker run --rm gopad/gopad-cli:windows-amd64 --help
 
 deploy_script:
   - ps: |
@@ -45,19 +45,19 @@ deploy_script:
         if ( $env:APPVEYOR_REPO_TAG -eq 'true' ) {
           $major,$minor,$patch = $env:APPVEYOR_REPO_TAG_NAME.substring(1).split('.')
 
-          docker push gopad/gopad-cli:windows
+          docker push gopad/gopad-cli:windows-amd64
 
-          docker tag gopad/gopad-cli:windows gopad/gopad-cli:$major.$minor.$patch-windows
-          docker push gopad/gopad-cli:$major.$minor.$patch-windows
+          docker tag gopad/gopad-cli:windows-amd64 gopad/gopad-cli:$major.$minor.$patch-windows-amd64
+          docker push gopad/gopad-cli:$major.$minor.$patch-windows-amd64
 
-          docker tag gopad/gopad-cli:windows gopad/gopad-cli:$major.$minor-windows
-          docker push gopad/gopad-cli:$major.$minor-windows
+          docker tag gopad/gopad-cli:windows-amd64 gopad/gopad-cli:$major.$minor-windows-amd64
+          docker push gopad/gopad-cli:$major.$minor-windows-amd64
 
-          docker tag gopad/gopad-cli:windows gopad/gopad-cli:$major-windows
-          docker push gopad/gopad-cli:$major-windows
+          docker tag gopad/gopad-cli:windows-amd64 gopad/gopad-cli:$major-windows-amd64
+          docker push gopad/gopad-cli:$major-windows-amd64
         } else {
           if ( $env:APPVEYOR_REPO_BRANCH -eq 'master' ) {
-            docker push gopad/gopad-cli:windows
+            docker push gopad/gopad-cli:windows-amd64
           } else {
             Write-Host Ignoring feature branch.
           }
