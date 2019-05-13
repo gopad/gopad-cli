@@ -23,12 +23,6 @@ manifests:
       variant: v8
       os: linux
   -
-    image: gopad/gopad-cli:{{#if build.tag}}{{trimPrefix build.tag "v"}}-{{/if}}linux-arm32v7
-    platform:
-      architecture: arm
-      variant: v7
-      os: linux
-  -
     image: gopad/gopad-cli:{{#if build.tag}}{{trimPrefix build.tag "v"}}-{{/if}}linux-arm32v6
     platform:
       architecture: arm

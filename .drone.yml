@@ -264,25 +264,6 @@ steps:
   depends_on:
   - finish
 
-- name: arm32v7
-  pull: always
-  image: plugins/docker:18.09
-  settings:
-    username:
-      from_secret: docker_username
-    password:
-      from_secret: docker_password
-    auto_tag: true
-    auto_tag_suffix: linux-arm32v7
-    dockerfile: docker/Dockerfile.linux.arm32v7
-    repo: gopad/gopad-cli
-  when:
-    event:
-      exclude:
-      - pull_request
-  depends_on:
-  - finish
-
 - name: arm32v6
   pull: always
   image: plugins/docker:18.09
@@ -321,7 +302,6 @@ steps:
   - amd64
   - i386
   - arm64v8
-  - arm32v7
   - arm32v6
 
 - name: microbadger
@@ -467,6 +447,10 @@ steps:
   depends_on:
   - gpgsign
 
+volumes:
+- name: gopath
+  temp: {}
+
 trigger:
   ref:
   - refs/heads/master
@@ -592,6 +576,10 @@ steps:
     - tag
   depends_on:
   - gpgsign
+
+volumes:
+- name: gopath
+  temp: {}
 
 trigger:
   ref:
