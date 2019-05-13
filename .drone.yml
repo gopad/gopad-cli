@@ -357,6 +357,8 @@ steps:
   volumes:
   - name: gopath
     path: /srv/app
+  depends_on:
+  - generate
 
 - name: finish
   image: webhippie/golang:1.12
@@ -368,6 +370,8 @@ steps:
   volumes:
   - name: gopath
     path: /srv/app
+  depends_on:
+  - build
 
 - name: gpgsign
   image: plugins/gpgsign:1
@@ -487,6 +491,8 @@ steps:
   volumes:
   - name: gopath
     path: /srv/app
+  depends_on:
+  - generate
 
 - name: finish
   image: webhippie/golang:1.12
@@ -498,6 +504,8 @@ steps:
   volumes:
   - name: gopath
     path: /srv/app
+  depends_on:
+  - build
 
 - name: gpgsign
   image: plugins/gpgsign:1
