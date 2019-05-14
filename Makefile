@@ -18,6 +18,14 @@ GENERATE ?= $(PACKAGES)
 
 TAGS ?=
 
+ifndef OUTPUT
+	ifneq ($(DRONE_TAG),)
+		OUTPUT ?= $(subst v,,$(DRONE_TAG))
+	else
+		OUTPUT ?= testing
+	endif
+endif
+
 ifndef VERSION
 	ifneq ($(DRONE_TAG),)
 		VERSION ?= $(subst v,,$(DRONE_TAG))
@@ -87,15 +95,15 @@ release-dirs:
 
 .PHONY: release-linux
 release-linux: gorunpkg
-	gorunpkg github.com/mitchellh/gox -tags 'netgo $(TAGS)' -ldflags '-extldflags "-static" $(LDFLAGS)' -os 'linux' -arch 'amd64 386 arm64 arm' -output '$(DIST)/binaries/$(EXECUTABLE)-$(VERSION)-{{.OS}}-{{.Arch}}' ./cmd/$(NAME)
+	gorunpkg github.com/mitchellh/gox -tags 'netgo $(TAGS)' -ldflags '-extldflags "-static" $(LDFLAGS)' -os 'linux' -arch 'amd64 386 arm64 arm' -output '$(DIST)/binaries/$(EXECUTABLE)-$(OUTPUT)-{{.OS}}-{{.Arch}}' ./cmd/$(NAME)
 
 .PHONY: release-windows
 release-windows: gorunpkg
-	gorunpkg github.com/mitchellh/gox -tags 'netgo $(TAGS)' -ldflags '-extldflags "-static" $(LDFLAGS)' -os 'windows' -arch 'amd64' -output '$(DIST)/binaries/$(EXECUTABLE)-$(VERSION)-{{.OS}}-{{.Arch}}' ./cmd/$(NAME)
+	gorunpkg github.com/mitchellh/gox -tags 'netgo $(TAGS)' -ldflags '-extldflags "-static" $(LDFLAGS)' -os 'windows' -arch 'amd64' -output '$(DIST)/binaries/$(EXECUTABLE)-$(OUTPUT)-{{.OS}}-{{.Arch}}' ./cmd/$(NAME)
 
 .PHONY: release-darwin
 release-darwin: gorunpkg
-	gorunpkg github.com/mitchellh/gox -tags 'netgo $(TAGS)' -ldflags '$(LDFLAGS)' -os 'darwin' -arch 'amd64' -output '$(DIST)/binaries/$(EXECUTABLE)-$(VERSION)-{{.OS}}-{{.Arch}}' ./cmd/$(NAME)
+	gorunpkg github.com/mitchellh/gox -tags 'netgo $(TAGS)' -ldflags '$(LDFLAGS)' -os 'darwin' -arch 'amd64' -output '$(DIST)/binaries/$(EXECUTABLE)-$(OUTPUT)-{{.OS}}-{{.Arch}}' ./cmd/$(NAME)
 
 .PHONY: release-copy
 release-copy:

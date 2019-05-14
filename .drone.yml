@@ -162,7 +162,7 @@ steps:
     bucket:
       from_secret: s3_bucket
     source: dist/release/*
-    target: /cli/master
+    target: /cli/testing
     strip_prefix: dist/release/
     path_style: true
   when:
@@ -406,7 +406,7 @@ steps:
     bucket:
       from_secret: s3_bucket
     source: dist/release/*
-    target: /cli/master
+    target: /cli/testing
     strip_prefix: dist/release/
     path_style: true
   when:
@@ -540,7 +540,7 @@ steps:
     bucket:
       from_secret: s3_bucket
     source: dist/release/*
-    target: /cli/master
+    target: /cli/testing
     strip_prefix: dist/release/
     path_style: true
   when:
