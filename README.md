@@ -14,12 +14,12 @@ Within this repository we are building the command-line client to interact with 
 
 ## Install
 
-You can download prebuilt binaries from the GitHub releases or from our [download site](http://dl.gopad.tech/cli). You are a Mac user? Just take a look at our [homebrew formula](https://github.com/gopad/homebrew-gopad).
+You can download prebuilt binaries from the GitHub releases or from our [download site](http://dl.gopad.eu/cli). You are a Mac user? Just take a look at our [homebrew formula](https://github.com/gopad/homebrew-gopad).
 
 
 ## Development
 
-Make sure you have a working Go environment, for further reference or a guide take a look at the [install instructions](http://golang.org/doc/install.html). This project requires Go >= v1.11.
+Make sure you have a working Go environment, for further reference or a guide take a look at the [install instructions](http://golang.org/doc/install.html). This project requires Go >= v1.18.
 
 ```bash
 git clone https://github.com/gopad/gopad-cli.git

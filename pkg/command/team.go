@@ -1,52 +1,53 @@
-package main
+package command
 
 import (
 	"fmt"
 	"os"
 	"text/template"
 
-	"github.com/gopad/gopad-go/gopad"
-	"gopkg.in/urfave/cli.v2"
+	"github.com/bufbuild/connect-go"
+	membersv1 "github.com/gopad/gopad-go/gopad/members/v1"
+	teamsv1 "github.com/gopad/gopad-go/gopad/teams/v1"
+	"github.com/urfave/cli/v2"
 )
 
 // tmplTeamList represents a row within user listing.
 var tmplTeamList = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
-ID: {{ .ID }}
+ID: {{ .Id }}
 Name: {{ .Name }}
 `
 
 // tmplTeamShow represents a user within details view.
 var tmplTeamShow = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
-ID: {{ .ID }}
-Name: {{ .Name }}{{with .Users}}
-Users: {{ userlist . }}{{end}}{{end}}
-Created: {{ .CreatedAt.Format "Mon Jan _2 15:04:05 MST 2006" }}
-Updated: {{ .UpdatedAt.Format "Mon Jan _2 15:04:05 MST 2006" }}
+ID: {{ .Id }}
+Name: {{ .Name }}
+Created: {{ .CreatedAt.AsTime }}
+Updated: {{ .UpdatedAt.AsTime }}
 `
 
 // tmplTeamUserList represents a row within team user listing.
-var tmplTeamUserList = "Slug: \x1b[33m{{ .User.Slug }} \x1b[0m" + `
-ID: {{ .User.ID }}
-Username: {{ .User.Username }}
-Permission: {{ .Perm }}
+var tmplTeamUserList = "Slug: \x1b[33m{{ .UserSlug }} \x1b[0m" + `
+ID: {{ .UserId }}
+Username: {{ .UserName }}
 `
 
 // Team provides the sub-command for the team API.
 func Team() *cli.Command {
 	return &cli.Command{
 		Name:  "team",
-		Usage: "team commands",
+		Usage: "Team related sub-commands",
 		Subcommands: []*cli.Command{
 			{
 				Name:      "list",
 				Aliases:   []string{"ls"},
-				Usage:     "list all teams",
+				Usage:     "List all teams",
 				ArgsUsage: " ",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "format",
-						Value: tmplTeamList,
-						Usage: "custom output format",
+						Name:   "format",
+						Value:  tmplTeamList,
+						Usage:  "Custom output format",
+						Hidden: true,
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -55,18 +56,19 @@ func Team() *cli.Command {
 			},
 			{
 				Name:      "show",
-				Usage:     "show a team",
+				Usage:     "Show a team",
 				ArgsUsage: " ",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "id, i",
 						Value: "",
-						Usage: "team id or slug",
+						Usage: "Team ID or slug",
 					},
 					&cli.StringFlag{
-						Name:  "format",
-						Value: tmplTeamShow,
-						Usage: "custom output format",
+						Name:   "format",
+						Value:  tmplTeamShow,
+						Usage:  "Custom output format",
+						Hidden: true,
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -76,13 +78,13 @@ func Team() *cli.Command {
 			{
 				Name:      "delete",
 				Aliases:   []string{"rm"},
-				Usage:     "delete a team",
+				Usage:     "Delete a team",
 				ArgsUsage: " ",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "id, i",
 						Value: "",
-						Usage: "team id or slug",
+						Usage: "Team ID or slug",
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -91,23 +93,23 @@ func Team() *cli.Command {
 			},
 			{
 				Name:      "update",
-				Usage:     "update a team",
+				Usage:     "Update a team",
 				ArgsUsage: " ",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "id, i",
 						Value: "",
-						Usage: "team id or slug",
+						Usage: "Team ID or slug",
 					},
 					&cli.StringFlag{
 						Name:  "slug",
 						Value: "",
-						Usage: "provide a slug",
+						Usage: "Provide a slug",
 					},
 					&cli.StringFlag{
 						Name:  "name",
 						Value: "",
-						Usage: "provide a name",
+						Usage: "Provide a name",
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -116,18 +118,18 @@ func Team() *cli.Command {
 			},
 			{
 				Name:      "create",
-				Usage:     "create a team",
+				Usage:     "Create a team",
 				ArgsUsage: " ",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "slug",
 						Value: "",
-						Usage: "provide a slug",
+						Usage: "Provide a slug",
 					},
 					&cli.StringFlag{
 						Name:  "name",
 						Value: "",
-						Usage: "provide a name",
+						Usage: "Provide a name",
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -136,23 +138,24 @@ func Team() *cli.Command {
 			},
 			{
 				Name:  "user",
-				Usage: "user assignments",
+				Usage: "User assignments",
 				Subcommands: []*cli.Command{
 					{
 						Name:      "list",
 						Aliases:   []string{"ls"},
-						Usage:     "list assigned users for a team",
+						Usage:     "List assigned users for a team",
 						ArgsUsage: " ",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:  "id, i",
 								Value: "",
-								Usage: "team id or slug",
+								Usage: "Team ID or slug",
 							},
 							&cli.StringFlag{
-								Name:  "format",
-								Value: tmplTeamUserList,
-								Usage: "custom output format",
+								Name:   "format",
+								Value:  tmplTeamUserList,
+								Usage:  "Custom output format",
+								Hidden: true,
 							},
 						},
 						Action: func(c *cli.Context) error {
@@ -161,23 +164,18 @@ func Team() *cli.Command {
 					},
 					{
 						Name:      "append",
-						Usage:     "append an user to a team",
+						Usage:     "Append user to team",
 						ArgsUsage: " ",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:  "id, i",
 								Value: "",
-								Usage: "team id or slug",
+								Usage: "Team ID or slug",
 							},
 							&cli.StringFlag{
 								Name:  "user, u",
 								Value: "",
-								Usage: "user id or slug",
-							},
-							&cli.StringFlag{
-								Name:  "perm",
-								Value: "user",
-								Usage: "permission, can be user, admin or owner",
+								Usage: "User ID or slug",
 							},
 						},
 						Action: func(c *cli.Context) error {
@@ -185,45 +183,20 @@ func Team() *cli.Command {
 						},
 					},
 					{
-						Name:      "perm",
-						Usage:     "update team user permissions",
-						ArgsUsage: " ",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:  "id, i",
-								Value: "",
-								Usage: "team id or slug",
-							},
-							&cli.StringFlag{
-								Name:  "user, u",
-								Value: "",
-								Usage: "user id or slug",
-							},
-							&cli.StringFlag{
-								Name:  "perm",
-								Value: "user",
-								Usage: "permission, can be user, admin or owner",
-							},
-						},
-						Action: func(c *cli.Context) error {
-							return Handle(c, TeamUserPerm)
-						},
-					},
-					{
 						Name:      "remove",
 						Aliases:   []string{"rm"},
-						Usage:     "remove an user from a team",
+						Usage:     "Remove user from a team",
 						ArgsUsage: " ",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:  "id, i",
 								Value: "",
-								Usage: "team id or slug",
+								Usage: "Team ID or slug",
 							},
 							&cli.StringFlag{
 								Name:  "user, u",
 								Value: "",
-								Usage: "user id or slug",
+								Usage: "User ID or slug",
 							},
 						},
 						Action: func(c *cli.Context) error {
@@ -237,15 +210,18 @@ func Team() *cli.Command {
 }
 
 // TeamList provides the sub-command to list all teams.
-func TeamList(c *cli.Context, client gopad.ClientAPI) error {
-	records, err := client.TeamList()
+func TeamList(c *cli.Context, client *Client) error {
+	resp, err := client.Teams.List(
+		c.Context,
+		&connect.Request[teamsv1.ListRequest]{},
+	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
-	if len(records) == 0 {
-		fmt.Fprintf(os.Stderr, "empty result\n")
+	if len(resp.Msg.Teams) == 0 {
+		fmt.Fprintln(os.Stderr, "Empty result")
 		return nil
 	}
 
@@ -256,17 +232,15 @@ func TeamList(c *cli.Context, client gopad.ClientAPI) error {
 	).Funcs(
 		sprigFuncMap,
 	).Parse(
-		fmt.Sprintf("%s\n", c.String("format")),
+		fmt.Sprintln(c.String("format")),
 	)
 
 	if err != nil {
 		return err
 	}
 
-	for _, record := range records {
-		err := tmpl.Execute(os.Stdout, record)
-
-		if err != nil {
+	for _, record := range resp.Msg.Teams {
+		if err := tmpl.Execute(os.Stdout, record); err != nil {
 			return err
 		}
 	}
@@ -275,13 +249,18 @@ func TeamList(c *cli.Context, client gopad.ClientAPI) error {
 }
 
 // TeamShow provides the sub-command to show team details.
-func TeamShow(c *cli.Context, client gopad.ClientAPI) error {
-	record, err := client.TeamGet(
-		GetIdentifierParam(c),
+func TeamShow(c *cli.Context, client *Client) error {
+	resp, err := client.Teams.Show(
+		c.Context,
+		&connect.Request[teamsv1.ShowRequest]{
+			Msg: &teamsv1.ShowRequest{
+				Id: GetIdentifierParam(c),
+			},
+		},
 	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
 	tmpl, err := template.New(
@@ -291,72 +270,90 @@ func TeamShow(c *cli.Context, client gopad.ClientAPI) error {
 	).Funcs(
 		sprigFuncMap,
 	).Parse(
-		fmt.Sprintf("%s\n", c.String("format")),
+		fmt.Sprintln(c.String("format")),
 	)
 
 	if err != nil {
 		return err
 	}
 
-	return tmpl.Execute(os.Stdout, record)
+	return tmpl.Execute(os.Stdout, resp.Msg.Team)
 }
 
 // TeamDelete provides the sub-command to delete a team.
-func TeamDelete(c *cli.Context, client gopad.ClientAPI) error {
-	err := client.TeamDelete(
-		GetIdentifierParam(c),
+func TeamDelete(c *cli.Context, client *Client) error {
+	resp, err := client.Teams.Delete(
+		c.Context,
+		&connect.Request[teamsv1.DeleteRequest]{
+			Msg: &teamsv1.DeleteRequest{
+				Id: GetIdentifierParam(c),
+			},
+		},
 	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
-	fmt.Fprintf(os.Stderr, "successfully delete\n")
+	fmt.Fprintln(os.Stderr, resp.Msg.Message)
 	return nil
 }
 
 // TeamUpdate provides the sub-command to update a team.
-func TeamUpdate(c *cli.Context, client gopad.ClientAPI) error {
-	record, err := client.TeamGet(
-		GetIdentifierParam(c),
+func TeamUpdate(c *cli.Context, client *Client) error {
+	resp, err := client.Teams.Show(
+		c.Context,
+		&connect.Request[teamsv1.ShowRequest]{
+			Msg: &teamsv1.ShowRequest{
+				Id: GetIdentifierParam(c),
+			},
+		},
 	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
+	record := resp.Msg.Team
+	req := &teamsv1.UpdateTeam{}
 	changed := false
 
 	if val := c.String("slug"); c.IsSet("slug") && val != record.Slug {
-		record.Slug = val
+		req.Slug = &val
 		changed = true
 	}
 
 	if val := c.String("name"); c.IsSet("name") && val != record.Name {
-		record.Name = val
+		req.Name = &val
 		changed = true
 	}
 
 	if changed {
-		_, patch := client.TeamPatch(
-			record,
+		_, err := client.Teams.Update(
+			c.Context,
+			&connect.Request[teamsv1.UpdateRequest]{
+				Msg: &teamsv1.UpdateRequest{
+					Id:   GetIdentifierParam(c),
+					Team: req,
+				},
+			},
 		)
 
-		if patch != nil {
-			return patch
+		if err != nil {
+			return PrettyError(err)
 		}
 
-		fmt.Fprintf(os.Stderr, "successfully updated\n")
+		fmt.Fprintln(os.Stderr, "Successfully updated")
 	} else {
-		fmt.Fprintf(os.Stderr, "nothing to update...\n")
+		fmt.Fprintln(os.Stderr, "Nothing to update...")
 	}
 
 	return nil
 }
 
 // TeamCreate provides the sub-command to create a team.
-func TeamCreate(c *cli.Context, client gopad.ClientAPI) error {
-	record := &gopad.Team{}
+func TeamCreate(c *cli.Context, client *Client) error {
+	record := &teamsv1.CreateTeam{}
 
 	if val := c.String("slug"); c.IsSet("slug") && val != "" {
 		record.Slug = val
@@ -368,32 +365,40 @@ func TeamCreate(c *cli.Context, client gopad.ClientAPI) error {
 		return fmt.Errorf("you must provide a name")
 	}
 
-	_, err := client.TeamPost(
-		record,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(os.Stderr, "successfully created\n")
-	return nil
-}
-
-// TeamUserList provides the sub-command to list users of the team.
-func TeamUserList(c *cli.Context, client gopad.ClientAPI) error {
-	records, err := client.TeamUserList(
-		gopad.TeamUserParams{
-			Team: GetIdentifierParam(c),
+	_, err := client.Teams.Create(
+		c.Context,
+		&connect.Request[teamsv1.CreateRequest]{
+			Msg: &teamsv1.CreateRequest{
+				Team: record,
+			},
 		},
 	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
-	if len(records) == 0 {
-		fmt.Fprintf(os.Stderr, "empty result\n")
+	fmt.Fprintln(os.Stderr, "Successfully created")
+	return nil
+}
+
+// TeamUserList provides the sub-command to list users of the team.
+func TeamUserList(c *cli.Context, client *Client) error {
+	resp, err := client.Members.List(
+		c.Context,
+		&connect.Request[membersv1.ListRequest]{
+			Msg: &membersv1.ListRequest{
+				Team: GetIdentifierParam(c),
+			},
+		},
+	)
+
+	if err != nil {
+		return PrettyError(err)
+	}
+
+	if len(resp.Msg.Members) == 0 {
+		fmt.Fprintln(os.Stderr, "Empty result")
 		return nil
 	}
 
@@ -404,17 +409,15 @@ func TeamUserList(c *cli.Context, client gopad.ClientAPI) error {
 	).Funcs(
 		sprigFuncMap,
 	).Parse(
-		fmt.Sprintf("%s\n", c.String("format")),
+		fmt.Sprintln(c.String("format")),
 	)
 
 	if err != nil {
 		return err
 	}
 
-	for _, record := range records {
-		err := tmpl.Execute(os.Stdout, record)
-
-		if err != nil {
+	for _, record := range resp.Msg.Members {
+		if err := tmpl.Execute(os.Stdout, record); err != nil {
 			return err
 		}
 	}
@@ -423,54 +426,45 @@ func TeamUserList(c *cli.Context, client gopad.ClientAPI) error {
 }
 
 // TeamUserAppend provides the sub-command to append a user to the team.
-func TeamUserAppend(c *cli.Context, client gopad.ClientAPI) error {
-	err := client.TeamUserAppend(
-		gopad.TeamUserParams{
-			Team: GetIdentifierParam(c),
-			User: GetUserParam(c),
-			Perm: GetPermParam(c),
+func TeamUserAppend(c *cli.Context, client *Client) error {
+	resp, err := client.Members.Append(
+		c.Context,
+		&connect.Request[membersv1.AppendRequest]{
+			Msg: &membersv1.AppendRequest{
+				Member: &membersv1.AppendMember{
+					Team: GetIdentifierParam(c),
+					User: GetUserParam(c),
+				},
+			},
 		},
 	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
-	fmt.Fprintf(os.Stderr, "successfully appended to user\n")
-	return nil
-}
-
-// TeamUserPerm provides the sub-command to update team user permissions.
-func TeamUserPerm(c *cli.Context, client gopad.ClientAPI) error {
-	err := client.TeamUserPerm(
-		gopad.TeamUserParams{
-			Team: GetIdentifierParam(c),
-			User: GetUserParam(c),
-			Perm: GetPermParam(c),
-		},
-	)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(os.Stderr, "successfully updated permissions\n")
+	fmt.Fprintln(os.Stderr, resp.Msg.Message)
 	return nil
 }
 
 // TeamUserRemove provides the sub-command to remove a user from the team.
-func TeamUserRemove(c *cli.Context, client gopad.ClientAPI) error {
-	err := client.TeamUserDelete(
-		gopad.TeamUserParams{
-			Team: GetIdentifierParam(c),
-			User: GetUserParam(c),
+func TeamUserRemove(c *cli.Context, client *Client) error {
+	resp, err := client.Members.Drop(
+		c.Context,
+		&connect.Request[membersv1.DropRequest]{
+			Msg: &membersv1.DropRequest{
+				Member: &membersv1.DropMember{
+					Team: GetIdentifierParam(c),
+					User: GetUserParam(c),
+				},
+			},
 		},
 	)
 
 	if err != nil {
-		return err
+		return PrettyError(err)
 	}
 
-	fmt.Fprintf(os.Stderr, "successfully removed from user\n")
+	fmt.Fprintln(os.Stderr, resp.Msg.Message)
 	return nil
 }
