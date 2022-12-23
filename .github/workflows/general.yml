@@ -11,7 +11,7 @@ name: general
 
 jobs:
   general:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source
@@ -48,13 +48,13 @@ jobs:
         id: test
         run: make test
 
-      - name: Coverage report
-        id: codacy
-        if: github.ref == 'refs/heads/master'
-        uses: codacy/codacy-coverage-reporter-action@v1
-        with:
-          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-          coverage-reports: coverage.out
-          force-coverage-parser: go
+      # - name: Coverage report
+      #   id: codacy
+      #   if: github.ref == 'refs/heads/master'
+      #   uses: codacy/codacy-coverage-reporter-action@v1
+      #   with:
+      #     project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+      #     coverage-reports: coverage.out
+      #     force-coverage-parser: go
 
 ...
