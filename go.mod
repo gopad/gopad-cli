@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/bufbuild/connect-go v1.5.2
-	github.com/gopad/gopad-go v0.0.0-20230225162202-10cf4a0fe56c
+	github.com/gopad/gopad-go v0.0.0-20230317112733-32aaa65507d4
 	github.com/joho/godotenv v1.5.1
 	github.com/urfave/cli/v2 v2.25.0
 )
@@ -24,5 +24,5 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 )
