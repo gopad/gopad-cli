@@ -8,7 +8,7 @@ require (
 	github.com/gopad/gopad-go v0.0.0-20230531232021-57c75d26dae6
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.8.4
-	github.com/urfave/cli/v2 v2.25.6
+	github.com/urfave/cli/v2 v2.25.7
 )
 
 require (
