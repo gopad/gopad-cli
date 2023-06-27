@@ -42,6 +42,8 @@ github.com/gopad/gopad-go v0.0.0-20230531232021-57c75d26dae6 h1:K6O5FtaQSluxHONE
 github.com/gopad/gopad-go v0.0.0-20230531232021-57c75d26dae6/go.mod h1:p66eqM0I+axAsmHbTVwn18GOn0EyOtCMpRQzdSk7kgw=
 github.com/gopad/gopad-go v0.0.0-20230626162148-022249b5dc2a h1:rXOFhZMD3h9f8Yhoz0mVajYij17QS1ZOgV5JHN/ceno=
 github.com/gopad/gopad-go v0.0.0-20230626162148-022249b5dc2a/go.mod h1:qMsHxs7l+OZhU+vmW5s3AKvKaErwXkv3pzJxir/pczc=
+github.com/gopad/gopad-go v0.0.0-20230627222143-99c44c721b0d h1:qZMT44FbqChaNbMldZ45mzX3twFxfQXtidgqtRq4rm4=
+github.com/gopad/gopad-go v0.0.0-20230627222143-99c44c721b0d/go.mod h1:LtT82XnYQrb8pOUrPyoxU17D6mfCwKN6YoohCm8PNd0=
 github.com/huandu/xstrings v1.3.3/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
 github.com/huandu/xstrings v1.4.0 h1:D17IlohoQq4UcpqD7fDk80P7l+lwAmlFaBHgOipl2FU=
 github.com/huandu/xstrings v1.4.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
