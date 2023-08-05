@@ -50,6 +50,8 @@ github.com/gopad/gopad-go v0.0.0-20230726181253-f7640ee31362 h1:3TuQhNm3UiBDV9Y4
 github.com/gopad/gopad-go v0.0.0-20230726181253-f7640ee31362/go.mod h1:3DzG4xklPaIfjAkm42ld/0YTqQK67pd1fMLih6etdSs=
 github.com/gopad/gopad-go v0.0.0-20230805123102-3da5cf1c640a h1:hFxIkDd5oGavXZ0Nu+2h6bn5esC1dXYPFcZJAMKIHQs=
 github.com/gopad/gopad-go v0.0.0-20230805123102-3da5cf1c640a/go.mod h1:3DzG4xklPaIfjAkm42ld/0YTqQK67pd1fMLih6etdSs=
+github.com/gopad/gopad-go v0.0.0-20230805124326-0a3907339449 h1:JxAjJTjF5y6XmiJjzbhhG51J1u6h7qPy8LdTTSBEVEY=
+github.com/gopad/gopad-go v0.0.0-20230805124326-0a3907339449/go.mod h1:3DzG4xklPaIfjAkm42ld/0YTqQK67pd1fMLih6etdSs=
 github.com/huandu/xstrings v1.3.3/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
 github.com/huandu/xstrings v1.4.0 h1:D17IlohoQq4UcpqD7fDk80P7l+lwAmlFaBHgOipl2FU=
 github.com/huandu/xstrings v1.4.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
