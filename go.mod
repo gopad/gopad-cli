@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/bufbuild/connect-go v1.10.0
-	github.com/gopad/gopad-go v0.0.0-20230904151501-a68c26233cfb
+	github.com/gopad/gopad-go v0.0.0-20231206154106-1e419131b18f
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.26.0
