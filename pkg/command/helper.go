@@ -5,19 +5,19 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
-	"github.com/urfave/cli/v2"
+	"github.com/drone/funcmap"
+	"github.com/spf13/viper"
 )
 
-// sprigFuncMap provides template helpers provided by sprig.
-var sprigFuncMap = sprig.TxtFuncMap()
+// basicFuncMap provides template helpers provided by library.
+var basicFuncMap = funcmap.Funcs
 
 // globalFuncMap provides global template helper functions.
 var globalFuncMap = template.FuncMap{}
 
 // GetIdentifierParam checks and returns the record id/slug parameter.
-func GetIdentifierParam(c *cli.Context) string {
-	val := c.String("id")
+func GetIdentifierParam(name string) string {
+	val := viper.GetString(name)
 
 	if val == "" {
 		fmt.Fprintf(os.Stderr, "Error: you must provide an ID or a slug.\n")
@@ -28,11 +28,11 @@ func GetIdentifierParam(c *cli.Context) string {
 }
 
 // GetUserParam checks and returns the user id/slug parameter.
-func GetUserParam(c *cli.Context) string {
-	val := c.String("user")
+func GetUserParam(name string) string {
+	val := viper.GetString(name)
 
 	if val == "" {
-		fmt.Fprintf(os.Stderr, "Error: you must provide a user ID or slug.\n")
+		fmt.Fprintf(os.Stderr, "Error: you must provide a user ID or a slug.\n")
 		os.Exit(1)
 	}
 
@@ -40,11 +40,11 @@ func GetUserParam(c *cli.Context) string {
 }
 
 // GetTeamParam checks and returns the team id/slug parameter.
-func GetTeamParam(c *cli.Context) string {
-	val := c.String("team")
+func GetTeamParam(name string) string {
+	val := viper.GetString(name)
 
 	if val == "" {
-		fmt.Fprintf(os.Stderr, "Error: you must provide a team ID or slug.\n")
+		fmt.Fprintf(os.Stderr, "Error: you must provide a team ID or a slug.\n")
 		os.Exit(1)
 	}
 

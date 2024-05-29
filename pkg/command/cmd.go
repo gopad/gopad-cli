@@ -1,60 +1,53 @@
 package command
 
 import (
-	"os"
+	"strings"
 
 	"github.com/gopad/gopad-cli/pkg/version"
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
 	defaultServer = "http://localhost:8080"
 )
 
+var (
+	rootCmd = &cobra.Command{
+		Use:           "gopad-cli",
+		Short:         "Etherpad for markdown with go",
+		Version:       version.String,
+		SilenceErrors: false,
+		SilenceUsage:  true,
+
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
+	}
+)
+
+func init() {
+	cobra.OnInitialize(setupConfig)
+
+	rootCmd.PersistentFlags().BoolP("help", "h", false, "Show the help")
+	rootCmd.PersistentFlags().BoolP("version", "v", false, "Print the version")
+
+	rootCmd.PersistentFlags().StringP("server", "s", defaultServer, "API server")
+	viper.SetDefault("server", "")
+	_ = viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
+
+	rootCmd.PersistentFlags().StringP("token", "t", "", "API token")
+	viper.SetDefault("token", "")
+	_ = viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+}
+
 // Run parses the command line arguments and executes the program.
 func Run() error {
-	app := &cli.App{
-		Name:    "gopad-cli",
-		Version: version.String,
-		Usage:   "Etherpad for markdown with go",
-		Authors: []*cli.Author{
-			{
-				Name:  "Thomas Boerger",
-				Email: "thomas@webhippie.de",
-			},
-		},
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "server, s",
-				Value:   defaultServer,
-				Usage:   "API server",
-				EnvVars: []string{"GOPAD_SERVER"},
-			},
-			&cli.StringFlag{
-				Name:    "token, t",
-				Value:   "",
-				Usage:   "API token",
-				EnvVars: []string{"GOPAD_TOKEN"},
-			},
-		},
-		Commands: []*cli.Command{
-			Profile(),
-			User(),
-			Team(),
-		},
-	}
+	return rootCmd.Execute()
+}
 
-	cli.HelpFlag = &cli.BoolFlag{
-		Name:    "help",
-		Aliases: []string{"h"},
-		Usage:   "Show the help",
-	}
-
-	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "version",
-		Aliases: []string{"v"},
-		Usage:   "Print the version",
-	}
-
-	return app.Run(os.Args)
+func setupConfig() {
+	viper.SetEnvPrefix("gopad_")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
 }

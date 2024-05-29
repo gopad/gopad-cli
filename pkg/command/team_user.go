@@ -5,13 +5,13 @@ import (
 )
 
 var (
-	userCmd = &cobra.Command{
+	teamUserCmd = &cobra.Command{
 		Use:   "user",
-		Short: "User related sub-commands",
+		Short: "User assignments",
 		Args:  cobra.NoArgs,
 	}
 )
 
 func init() {
-	rootCmd.AddCommand(userCmd)
+	teamCmd.AddCommand(teamUserCmd)
 }
