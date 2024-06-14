@@ -1,9 +1,17 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type teamDeleteBind struct {
+	ID string
+}
 
 var (
 	teamDeleteCmd = &cobra.Command{
@@ -14,15 +22,48 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamDeleteArgs = teamDeleteBind{}
 )
 
 func init() {
 	teamCmd.AddCommand(teamDeleteCmd)
 
-	teamDeleteCmd.Flags().StringP("id", "i", "", "Team ID or slug")
-	_ = viper.BindPFlag("team.delete.id", teamDeleteCmd.Flags().Lookup("id"))
+	teamDeleteCmd.Flags().StringVarP(
+		&teamDeleteArgs.ID,
+		"id",
+		"i",
+		"",
+		"Team ID or slug",
+	)
 }
 
-func teamDeleteAction(_ *cobra.Command, _ []string, _ *Client) error {
+func teamDeleteAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if teamDeleteArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
+	resp, err := client.DeleteTeamWithResponse(
+		ccmd.Context(),
+		teamDeleteArgs.ID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		fmt.Fprintln(os.Stderr, "successfully delete")
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

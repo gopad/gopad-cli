@@ -1,9 +1,18 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type teamUserRemoveBind struct {
+	ID   string
+	User string
+}
 
 var (
 	teamUserRemoveCmd = &cobra.Command{
@@ -14,18 +23,64 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamUserRemoveArgs = teamUserRemoveBind{}
 )
 
 func init() {
 	teamUserCmd.AddCommand(teamUserRemoveCmd)
 
-	teamUserRemoveCmd.Flags().StringP("id", "i", "", "Team ID or slug")
-	_ = viper.BindPFlag("team.user.remove.id", teamUserRemoveCmd.Flags().Lookup("id"))
+	teamUserRemoveCmd.Flags().StringVarP(
+		&teamUserRemoveArgs.ID,
+		"id",
+		"i",
+		"",
+		"Team ID or slug",
+	)
 
-	teamUserRemoveCmd.Flags().StringP("user", "t", "", "User ID or slug")
-	_ = viper.BindPFlag("team.user.remove.user", teamUserRemoveCmd.Flags().Lookup("user"))
+	teamUserRemoveCmd.Flags().StringVar(
+		&teamUserRemoveArgs.User,
+		"user",
+		"",
+		"User ID or slug",
+	)
 }
 
-func teamUserRemoveAction(_ *cobra.Command, _ []string, _ *Client) error {
+func teamUserRemoveAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if teamUserRemoveArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
+	if teamUserRemoveArgs.User == "" {
+		return fmt.Errorf("you must provide a user ID or a slug")
+	}
+
+	resp, err := client.DeleteTeamFromUserWithResponse(
+		ccmd.Context(),
+		teamUserRemoveArgs.ID,
+		gopad.DeleteTeamFromUserJSONRequestBody{
+			User: teamUserRemoveArgs.User,
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		fmt.Fprintln(os.Stderr, gopad.FromPtr(resp.JSON200.Message))
+	case http.StatusPreconditionFailed:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON412.Message))
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

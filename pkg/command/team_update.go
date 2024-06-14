@@ -1,9 +1,21 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+	"text/template"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type teamUpdateBind struct {
+	ID     string
+	Slug   string
+	Name   string
+	Format string
+}
 
 var (
 	teamUpdateCmd = &cobra.Command{
@@ -14,21 +26,109 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamUpdateArgs = teamUpdateBind{}
 )
 
 func init() {
 	teamCmd.AddCommand(teamUpdateCmd)
 
-	teamUpdateCmd.Flags().StringP("id", "i", "", "Team ID or slug")
-	_ = viper.BindPFlag("team.update.id", teamUpdateCmd.Flags().Lookup("id"))
+	teamUpdateCmd.Flags().StringVarP(
+		&teamUpdateArgs.ID,
+		"id",
+		"i",
+		"",
+		"Team ID or slug",
+	)
 
-	teamUpdateCmd.Flags().String("slug", "", "Slug for team")
-	_ = viper.BindPFlag("team.update.slug", teamUpdateCmd.Flags().Lookup("slug"))
+	teamUpdateCmd.Flags().StringVar(
+		&teamUpdateArgs.Slug,
+		"slug",
+		"",
+		"Slug for team",
+	)
 
-	teamUpdateCmd.Flags().String("name", "", "Name for team")
-	_ = viper.BindPFlag("team.update.name", teamUpdateCmd.Flags().Lookup("name"))
+	teamUpdateCmd.Flags().StringVar(
+		&teamUpdateArgs.Name,
+		"name",
+		"",
+		"Name for team",
+	)
+
+	teamUpdateCmd.Flags().StringVar(
+		&teamUpdateArgs.Format,
+		"format",
+		tmplTeamShow,
+		"Custom output format",
+	)
 }
 
-func teamUpdateAction(_ *cobra.Command, _ []string, _ *Client) error {
+func teamUpdateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if teamShowArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
+	body := gopad.UpdateTeamJSONRequestBody{}
+	changed := false
+
+	if val := teamUpdateArgs.Slug; val != "" {
+		body.Slug = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := teamUpdateArgs.Name; val != "" {
+		body.Name = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if !changed {
+		fmt.Fprintln(os.Stderr, "nothing to create...")
+		return nil
+	}
+
+	tmpl, err := template.New(
+		"_",
+	).Funcs(
+		globalFuncMap,
+	).Funcs(
+		basicFuncMap,
+	).Parse(
+		fmt.Sprintln(teamUpdateArgs.Format),
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	resp, err := client.UpdateTeamWithResponse(
+		ccmd.Context(),
+		teamUpdateArgs.ID,
+		body,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

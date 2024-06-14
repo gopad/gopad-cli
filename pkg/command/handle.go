@@ -1,11 +1,13 @@
 package command
 
 import (
+	"bytes"
+	"context"
 	"fmt"
-	"net"
+	"net/http"
 	"net/url"
 	"os"
-	"syscall"
+	"text/template"
 
 	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
@@ -22,12 +24,12 @@ type HandleFunc func(ccmd *cobra.Command, args []string, client *Client) error
 
 // Handle wraps the command function handler.
 func Handle(ccmd *cobra.Command, args []string, fn HandleFunc) {
-	if viper.GetString("server") == "" {
+	if viper.GetString("server.address") == "" {
 		fmt.Fprintf(os.Stderr, "Error: You must provide the server address.\n")
 		os.Exit(1)
 	}
 
-	server, err := url.Parse(viper.GetString("server"))
+	server, err := url.Parse(viper.GetString("server.address"))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Invalid server address, bad format?\n")
@@ -36,6 +38,13 @@ func Handle(ccmd *cobra.Command, args []string, fn HandleFunc) {
 
 	child, err := gopad.NewClientWithResponses(
 		server.String(),
+		gopad.WithRequestEditorFn(WithTokenAuth(
+			viper.GetString("server.token"),
+		)),
+		gopad.WithRequestEditorFn(WithBasicAuth(
+			viper.GetString("server.username"),
+			viper.GetString("server.password"),
+		)),
 	)
 
 	if err != nil {
@@ -53,31 +62,59 @@ func Handle(ccmd *cobra.Command, args []string, fn HandleFunc) {
 	}
 }
 
-func prettyError(err error) error {
-	if val, ok := err.(net.Error); ok && val.Timeout() {
-		return fmt.Errorf("connection to server timed out")
+func WithTokenAuth(token string) gopad.RequestEditorFn {
+	return func(_ context.Context, req *http.Request) error {
+		if token != "" {
+			req.Header.Set(
+				"X-API-Key",
+				token,
+			)
+		}
+		return nil
+	}
+}
+
+func WithBasicAuth(username, password string) gopad.RequestEditorFn {
+	return func(_ context.Context, req *http.Request) error {
+		if username != "" && password != "" {
+			req.SetBasicAuth(
+				username,
+				password,
+			)
+		}
+		return nil
+	}
+}
+
+var tmplValidationError = `{{ .Message }}
+{{ range $validation := .Errors }}
+* {{ $validation.Field }}: {{ $validation.Message }}
+{{ end }}
+`
+
+func validationError(notification *gopad.Notification) error {
+	tmpl, err := template.New(
+		"_",
+	).Funcs(
+		globalFuncMap,
+	).Funcs(
+		basicFuncMap,
+	).Parse(
+		tmplValidationError,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
 	}
 
-	switch val := err.(type) {
-	case *net.OpError:
-		switch val.Op {
-		case "dial":
-			return fmt.Errorf("unknown host for server connection")
-		case "read":
-			return fmt.Errorf("connection to server had been refused")
-		default:
-			return fmt.Errorf("failed to connect to the server")
-		}
-	case syscall.Errno:
-		switch val {
-		case syscall.ECONNREFUSED:
-			return fmt.Errorf("connection to server had been refused")
-		default:
-			return fmt.Errorf("failed to connect to the server")
-		}
-	case net.Error:
-		return fmt.Errorf("failed to connect to the server")
-	default:
-		return err
+	message := bytes.NewBufferString("")
+
+	if err := tmpl.Execute(
+		message,
+		notification,
+	); err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
 	}
+
+	return fmt.Errorf(message.String())
 }

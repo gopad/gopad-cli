@@ -1,14 +1,25 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+	"text/template"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
+type teamUserListBind struct {
+	ID     string
+	Format string
+}
+
 // tmplTeamUserList represents a row within team user listing.
-var tmplTeamUserList = "Slug: \x1b[33m{{ .UserSlug }} \x1b[0m" + `
-ID: {{ .UserId }}
-Username: {{ .UserName }}
+var tmplTeamUserList = "Slug: \x1b[33m{{ .User.Username }} \x1b[0m" + `
+ID: {{ .User.Id }}
+Email: {{ .User.Email }}
+Perm: {{ .Perm }}
 `
 
 var (
@@ -20,18 +31,87 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamUserListArgs = teamUserListBind{}
 )
 
 func init() {
 	teamUserCmd.AddCommand(teamUserListCmd)
 
-	teamUserListCmd.Flags().StringP("id", "i", "", "Team ID or slug")
-	_ = viper.BindPFlag("team.user.list.id", teamUserListCmd.Flags().Lookup("id"))
+	teamUserListCmd.Flags().StringVarP(
+		&teamUserListArgs.ID,
+		"id",
+		"i",
+		"",
+		"Team ID or slug",
+	)
 
-	teamUserListCmd.Flags().String("format", tmplTeamUserList, "Custom output format")
-	_ = viper.BindPFlag("team.user.list.format", teamUserListCmd.Flags().Lookup("format"))
+	teamUserListCmd.Flags().StringVar(
+		&teamUserListArgs.Format,
+		"format",
+		tmplTeamUserList,
+		"Custom output format",
+	)
 }
 
-func teamUserListAction(_ *cobra.Command, _ []string, _ *Client) error {
+func teamUserListAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if teamUserListArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
+	resp, err := client.ListTeamUsersWithResponse(
+		ccmd.Context(),
+		teamUserListArgs.ID,
+		&gopad.ListTeamUsersParams{
+			Limit:  gopad.ToPtr(10000),
+			Offset: gopad.ToPtr(0),
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	tmpl, err := template.New(
+		"_",
+	).Funcs(
+		globalFuncMap,
+	).Funcs(
+		basicFuncMap,
+	).Parse(
+		fmt.Sprintln(teamUserListArgs.Format),
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		records := gopad.FromPtr(resp.JSON200.Users)
+
+		if len(records) == 0 {
+			fmt.Fprintln(os.Stderr, "Empty result")
+			return nil
+		}
+
+		for _, record := range records {
+			if err := tmpl.Execute(
+				os.Stdout,
+				record,
+			); err != nil {
+				return fmt.Errorf("failed to render template: %w", err)
+			}
+		}
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

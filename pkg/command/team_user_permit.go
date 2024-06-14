@@ -1,9 +1,19 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type teamUserPermitBind struct {
+	ID   string
+	User string
+	Perm string
+}
 
 var (
 	teamUserPermitCmd = &cobra.Command{
@@ -14,21 +24,79 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamUserPermitArgs = teamUserPermitBind{}
 )
 
 func init() {
 	teamUserCmd.AddCommand(teamUserPermitCmd)
 
-	teamUserPermitCmd.Flags().StringP("id", "i", "", "Team ID or slug")
-	_ = viper.BindPFlag("team.user.permit.id", teamUserPermitCmd.Flags().Lookup("id"))
+	teamUserPermitCmd.Flags().StringVarP(
+		&teamUserPermitArgs.ID,
+		"id",
+		"i",
+		"",
+		"Team ID or slug",
+	)
 
-	teamUserPermitCmd.Flags().StringP("user", "t", "", "User ID or slug")
-	_ = viper.BindPFlag("team.user.permit.user", teamUserPermitCmd.Flags().Lookup("user"))
+	teamUserPermitCmd.Flags().StringVar(
+		&teamUserPermitArgs.User,
+		"user",
+		"",
+		"User ID or slug",
+	)
 
-	teamUserPermitCmd.Flags().String("perm", "", "Role for the user")
-	_ = viper.BindPFlag("team.user.permit.perm", teamUserPermitCmd.Flags().Lookup("perm"))
+	teamUserPermitCmd.Flags().StringVar(
+		&teamUserPermitArgs.Perm,
+		"perm",
+		"",
+		"Role for the user",
+	)
 }
 
-func teamUserPermitAction(_ *cobra.Command, _ []string, _ *Client) error {
+func teamUserPermitAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if teamUserPermitArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
+	if teamUserPermitArgs.User == "" {
+		return fmt.Errorf("you must provide a user ID or a slug")
+	}
+
+	body := gopad.PermitTeamUserJSONRequestBody{
+		User: teamUserPermitArgs.User,
+	}
+
+	if teamUserPermitArgs.Perm != "" {
+		body.Perm = gopad.ToPtr(teamUserPerm(teamUserPermitArgs.Perm))
+	}
+
+	resp, err := client.PermitTeamUserWithResponse(
+		ccmd.Context(),
+		teamUserPermitArgs.ID,
+		body,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		fmt.Fprintln(os.Stderr, gopad.FromPtr(resp.JSON200.Message))
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
+	case http.StatusPreconditionFailed:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON412.Message))
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

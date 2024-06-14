@@ -2,25 +2,28 @@ package command
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"text/template"
 
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // tmplProfileShow represents a profile within details view.
-var tmplProfileShow = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
+var tmplProfileShow = "Username: \x1b[33m{{ .Username }} \x1b[0m" + `
 ID: {{ .Id }}
-Username: {{ .Username }}
 Email: {{ .Email }}
-Firstname: {{ .Firstname }}
-Lastname: {{ .Lastname }}
+Fullname: {{ .Fullname }}
 Active: {{ .Active }}
 Admin: {{ .Admin }}
 Created: {{ .CreatedAt }}
 Updated: {{ .UpdatedAt }}
 `
+
+type profileShowBind struct {
+	Format string
+}
 
 var (
 	profileShowCmd = &cobra.Command{
@@ -31,31 +34,29 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	profileShowArgs = profileShowBind{}
 )
 
 func init() {
 	profileCmd.AddCommand(profileShowCmd)
 
-	profileShowCmd.Flags().String("format", tmplProfileShow, "Custom output format")
-	_ = viper.BindPFlag("profile.show.format", profileShowCmd.Flags().Lookup("format"))
+	profileShowCmd.Flags().StringVar(
+		&profileShowArgs.Format,
+		"format",
+		tmplProfileShow,
+		"Custom output format",
+	)
 }
 
-func profileShowAction(_ *cobra.Command, _ []string, _ *Client) error {
-	// resp, err := client.Profile.ShowProfile(
-	// 	profile.NewShowProfileParams(),
-	// 	client.AuthInfo,
-	// )
+func profileShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	resp, err := client.ShowProfileWithResponse(
+		ccmd.Context(),
+	)
 
-	// if err != nil {
-	// 	switch val := err.(type) {
-	// 	case *profile.ShowProfileForbidden:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	case *profile.ShowProfileDefault:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	default:
-	// 		return PrettyError(err)
-	// 	}
-	// }
+	if err != nil {
+		return err
+	}
 
 	tmpl, err := template.New(
 		"_",
@@ -64,15 +65,27 @@ func profileShowAction(_ *cobra.Command, _ []string, _ *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(viper.GetString("profile.show.format")),
+		fmt.Sprintln(profileShowArgs.Format),
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}
 
-	if err := tmpl.Execute(os.Stdout, nil); err != nil {
-		return fmt.Errorf("failed to render template: %w", err)
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
 	}
 
 	return nil

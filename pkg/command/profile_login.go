@@ -2,17 +2,24 @@ package command
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"text/template"
 
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // tmplProfileLogin represents a expiring login token.
 var tmplProfileLogin = "Token: \x1b[33m{{ .Token }} \x1b[0m" + `
 Expires: {{ .ExpiresAt }}
 `
+
+type profileLoginBind struct {
+	Username string
+	Password string
+	Format   string
+}
 
 var (
 	profileLoginCmd = &cobra.Command{
@@ -23,47 +30,55 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	profileLoginArgs = profileLoginBind{}
 )
 
 func init() {
 	profileCmd.AddCommand(profileLoginCmd)
 
-	profileLoginCmd.Flags().String("username", "", "Username for authentication")
-	_ = viper.BindPFlag("profile.login.username", profileLoginCmd.Flags().Lookup("username"))
+	profileLoginCmd.Flags().StringVar(
+		&profileLoginArgs.Username,
+		"username",
+		"",
+		"Username for authentication",
+	)
 
-	profileLoginCmd.Flags().String("password", "", "Password for authentication")
-	_ = viper.BindPFlag("profile.login.password", profileLoginCmd.Flags().Lookup("password"))
+	profileLoginCmd.Flags().StringVar(
+		&profileLoginArgs.Password,
+		"password",
+		"",
+		"Password for authentication",
+	)
 
-	profileLoginCmd.Flags().String("format", tmplProfileLogin, "Custom output format")
-	_ = viper.BindPFlag("profile.login.format", profileLoginCmd.Flags().Lookup("format"))
+	profileLoginCmd.Flags().StringVar(
+		&profileLoginArgs.Format,
+		"format",
+		tmplProfileLogin,
+		"Custom output format",
+	)
 }
 
-func profileLoginAction(_ *cobra.Command, _ []string, _ *Client) error {
-	if !viper.IsSet("profile.login.username") {
+func profileLoginAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if profileLoginArgs.Username == "" {
 		return fmt.Errorf("please provide a username")
 	}
 
-	if !viper.IsSet("profile.login.password") {
+	if profileLoginArgs.Password == "" {
 		return fmt.Errorf("please provide a password")
 	}
 
-	// resp, err := client.Auth.LoginUser(
-	// 	auth.NewLoginUserParams().WithAuthLogin(&models.AuthLogin{
-	// 		Username: viper.GetString("profile.login.username"),
-	// 		Password: viper.GetString("profile.login.password"),
-	// 	}),
-	// )
+	resp, err := client.LoginAuthWithResponse(
+		ccmd.Context(),
+		gopad.LoginAuthJSONRequestBody{
+			Username: profileLoginArgs.Username,
+			Password: profileLoginArgs.Password,
+		},
+	)
 
-	// if err != nil {
-	// 	switch val := err.(type) {
-	// 	case *auth.LoginUserUnauthorized:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	case *auth.LoginUserDefault:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	default:
-	// 		return PrettyError(err)
-	// 	}
-	// }
+	if err != nil {
+		return err
+	}
 
 	tmpl, err := template.New(
 		"_",
@@ -72,15 +87,27 @@ func profileLoginAction(_ *cobra.Command, _ []string, _ *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(viper.GetString("profile.login.format")),
+		fmt.Sprintln(profileLoginArgs.Format),
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}
 
-	if err := tmpl.Execute(os.Stdout, nil); err != nil {
-		return fmt.Errorf("failed to render template: %w", err)
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusUnauthorized:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON401.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
 	}
 
 	return nil

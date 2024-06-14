@@ -2,21 +2,26 @@ package command
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"text/template"
 
 	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // tmplTeamShow represents a user within details view.
 var tmplTeamShow = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
 ID: {{ .Id }}
 Name: {{ .Name }}
-Created: {{ .CreatedAt.AsTime }}
-Updated: {{ .UpdatedAt.AsTime }}
+Created: {{ .CreatedAt }}
+Updated: {{ .UpdatedAt }}
 `
+
+type teamShowBind struct {
+	ID     string
+	Format string
+}
 
 var (
 	teamShowCmd = &cobra.Command{
@@ -27,26 +32,41 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamShowArgs = teamShowBind{}
 )
 
 func init() {
 	teamCmd.AddCommand(teamShowCmd)
 
-	teamShowCmd.Flags().StringP("id", "i", "", "Team ID or slug")
-	_ = viper.BindPFlag("team.show.id", teamShowCmd.Flags().Lookup("id"))
+	teamShowCmd.Flags().StringVarP(
+		&teamShowArgs.ID,
+		"id",
+		"i",
+		"",
+		"Team ID or slug",
+	)
 
-	teamShowCmd.Flags().String("format", tmplTeamShow, "Custom output format")
-	_ = viper.BindPFlag("team.show.format", teamShowCmd.Flags().Lookup("format"))
+	teamShowCmd.Flags().StringVar(
+		&teamShowArgs.Format,
+		"format",
+		tmplTeamShow,
+		"Custom output format",
+	)
 }
 
 func teamShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if teamShowArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
 	resp, err := client.ShowTeamWithResponse(
 		ccmd.Context(),
-		GetIdentifierParam("team.show.id"),
+		teamShowArgs.ID,
 	)
 
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 
 	tmpl, err := template.New(
@@ -56,15 +76,29 @@ func teamShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(viper.GetString("team.show.format")),
+		fmt.Sprintln(teamShowArgs.Format),
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}
 
-	if err := tmpl.Execute(os.Stdout, gopad.FromPtr(resp.JSON200)); err != nil {
-		return fmt.Errorf("failed to render template: %w", err)
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
 	}
 
 	return nil

@@ -1,9 +1,20 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type profileUpdateBind struct {
+	Username string
+	Password string
+	Email    string
+	Fullname string
+}
 
 var (
 	profileUpdateCmd = &cobra.Command{
@@ -14,92 +25,92 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	profileUpdateArgs = profileUpdateBind{}
 )
 
 func init() {
 	profileCmd.AddCommand(profileUpdateCmd)
 
-	profileUpdateCmd.Flags().String("username", "", "Username for your profile")
-	_ = viper.BindPFlag("profile.update.username", profileUpdateCmd.Flags().Lookup("username"))
+	profileUpdateCmd.Flags().StringVar(
+		&profileUpdateArgs.Username,
+		"username",
+		"",
+		"Username for your profile",
+	)
 
-	profileUpdateCmd.Flags().String("password", "", "Password for your profile")
-	_ = viper.BindPFlag("profile.update.password", profileUpdateCmd.Flags().Lookup("password"))
+	profileUpdateCmd.Flags().StringVar(
+		&profileUpdateArgs.Password,
+		"password",
+		"",
+		"Password for your profile",
+	)
 
-	profileUpdateCmd.Flags().String("email", "", "Email for your profile")
-	_ = viper.BindPFlag("profile.update.email", profileUpdateCmd.Flags().Lookup("email"))
+	profileUpdateCmd.Flags().StringVar(
+		&profileUpdateArgs.Email,
+		"email",
+		"",
+		"Email for your profile",
+	)
 
-	profileUpdateCmd.Flags().String("fullanme", "", "Fullname for your profile")
-	_ = viper.BindPFlag("profile.update.fullanme", profileUpdateCmd.Flags().Lookup("fullanme"))
+	profileUpdateCmd.Flags().StringVar(
+		&profileUpdateArgs.Fullname,
+		"fullname",
+		"",
+		"Fullname for your profile",
+	)
 }
 
-func profileUpdateAction(_ *cobra.Command, _ []string, _ *Client) error {
-	// resp, err := client.Profile.ShowProfile(
-	// 	profile.NewShowProfileParams(),
-	// 	client.AuthInfo,
-	// )
+func profileUpdateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	body := gopad.UpdateProfileJSONRequestBody{}
+	changed := false
 
-	// if err != nil {
-	// 	switch val := err.(type) {
-	// 	case *profile.ShowProfileForbidden:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	case *profile.ShowProfileDefault:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	default:
-	// 		return PrettyError(err)
-	// 	}
-	// }
+	if val := profileUpdateArgs.Username; val != "" {
+		body.Username = gopad.ToPtr(val)
+		changed = true
+	}
 
-	// record := resp.Payload
-	// changed := false
+	if val := profileUpdateArgs.Password; val != "" {
+		body.Password = gopad.ToPtr(val)
+		changed = true
+	}
 
-	// if val := c.String("slug"); c.IsSet("slug") && val != *record.Slug {
-	// 	record.Slug = &val
-	// 	changed = true
-	// }
+	if val := profileUpdateArgs.Email; val != "" {
+		body.Email = gopad.ToPtr(val)
+		changed = true
+	}
 
-	// if val := c.String("email"); c.IsSet("email") && val != *record.Email {
-	// 	record.Email = &val
-	// 	changed = true
-	// }
+	if val := profileUpdateArgs.Fullname; val != "" {
+		body.Fullname = gopad.ToPtr(val)
+		changed = true
+	}
 
-	// if val := c.String("username"); c.IsSet("username") && val != *record.Username {
-	// 	record.Username = &val
-	// 	changed = true
-	// }
+	if !changed {
+		fmt.Fprintln(os.Stderr, "nothing to update...")
+		return nil
+	}
 
-	// if val := c.String("password"); c.IsSet("password") {
-	// 	password := strfmt.Password(val)
-	// 	record.Password = &password
-	// 	changed = true
-	// }
+	resp, err := client.UpdateProfileWithResponse(
+		ccmd.Context(),
+		body,
+	)
 
-	// if changed {
-	// 	if err := record.Validate(strfmt.Default); err != nil {
-	// 		return ValidteError(err)
-	// 	}
+	if err != nil {
+		return err
+	}
 
-	// 	_, err := client.Profile.UpdateProfile(
-	// 		profile.NewUpdateProfileParams().WithProfile(record),
-	// 		client.AuthInfo,
-	// 	)
-
-	// 	if err != nil {
-	// 		switch val := err.(type) {
-	// 		case *profile.UpdateProfileForbidden:
-	// 			return fmt.Errorf(*val.Payload.Message)
-	// 		case *profile.UpdateProfileDefault:
-	// 			return fmt.Errorf(*val.Payload.Message)
-	// 		case *profile.UpdateProfileUnprocessableEntity:
-	// 			return ValidteError(*val.Payload)
-	// 		default:
-	// 			return PrettyError(err)
-	// 		}
-	// 	}
-
-	// 	fmt.Fprintln(os.Stderr, "successfully update")
-	// } else {
-	// 	fmt.Fprintln(os.Stderr, "nothing to update...")
-	// }
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		fmt.Fprintln(os.Stderr, "successfully update")
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
 
 	return nil
 }

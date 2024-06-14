@@ -1,9 +1,20 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+	"text/template"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type teamCreateBind struct {
+	Slug   string
+	Name   string
+	Format string
+}
 
 var (
 	teamCreateCmd = &cobra.Command{
@@ -14,18 +25,94 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	teamCreateArgs = teamCreateBind{}
 )
 
 func init() {
 	teamCmd.AddCommand(teamCreateCmd)
 
-	teamCreateCmd.Flags().String("slug", "", "Slug for team")
-	_ = viper.BindPFlag("team.create.slug", teamCreateCmd.Flags().Lookup("slug"))
+	teamCreateCmd.Flags().StringVar(
+		&teamCreateArgs.Slug,
+		"slug",
+		"",
+		"Slug for team",
+	)
 
-	teamCreateCmd.Flags().String("name", "", "Name for team")
-	_ = viper.BindPFlag("team.create.name", teamCreateCmd.Flags().Lookup("name"))
+	teamCreateCmd.Flags().StringVar(
+		&teamCreateArgs.Name,
+		"name",
+		"",
+		"Name for team",
+	)
+
+	teamCreateCmd.Flags().StringVar(
+		&teamCreateArgs.Format,
+		"format",
+		tmplTeamShow,
+		"Custom output format",
+	)
 }
 
-func teamCreateAction(_ *cobra.Command, _ []string, _ *Client) error {
+func teamCreateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	body := gopad.CreateTeamJSONRequestBody{}
+	changed := false
+
+	if val := teamCreateArgs.Slug; val != "" {
+		body.Slug = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := teamCreateArgs.Name; val != "" {
+		body.Name = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if !changed {
+		fmt.Fprintln(os.Stderr, "nothing to create...")
+		return nil
+	}
+
+	tmpl, err := template.New(
+		"_",
+	).Funcs(
+		globalFuncMap,
+	).Funcs(
+		basicFuncMap,
+	).Parse(
+		fmt.Sprintln(teamCreateArgs.Format),
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	resp, err := client.CreateTeamWithResponse(
+		ccmd.Context(),
+		body,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

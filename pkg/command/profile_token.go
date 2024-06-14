@@ -2,16 +2,21 @@ package command
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"text/template"
 
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // tmplProfileToken represents a permanent login token.
 var tmplProfileToken = "Token: \x1b[33m{{ .Token }} \x1b[0m" + `
 `
+
+type profileTokenBind struct {
+	Format string
+}
 
 var (
 	profileTokenCmd = &cobra.Command{
@@ -22,33 +27,29 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	profileTokenArgs = profileTokenBind{}
 )
 
 func init() {
 	profileCmd.AddCommand(profileTokenCmd)
 
-	profileTokenCmd.Flags().String("format", tmplProfileToken, "Custom output format")
-	_ = viper.BindPFlag("profile.token.format", profileTokenCmd.Flags().Lookup("format"))
+	profileTokenCmd.Flags().StringVar(
+		&profileTokenArgs.Format,
+		"format",
+		tmplProfileToken,
+		"Custom output format",
+	)
 }
 
-func profileTokenAction(_ *cobra.Command, _ []string, _ *Client) error {
-	// resp, err := client.Profile.TokenProfile(
-	// 	profile.NewTokenProfileParams(),
-	// 	client.AuthInfo,
-	// )
+func profileTokenAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	resp, err := client.TokenProfileWithResponse(
+		ccmd.Context(),
+	)
 
-	// if err != nil {
-	// 	switch val := err.(type) {
-	// 	case *profile.TokenProfileForbidden:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	case *profile.TokenProfileInternalServerError:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	case *profile.TokenProfileDefault:
-	// 		return fmt.Errorf(*val.Payload.Message)
-	// 	default:
-	// 		return PrettyError(err)
-	// 	}
-	// }
+	if err != nil {
+		return err
+	}
 
 	tmpl, err := template.New(
 		"_",
@@ -57,15 +58,27 @@ func profileTokenAction(_ *cobra.Command, _ []string, _ *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(viper.GetString("profile.token.format")),
+		fmt.Sprintln(profileTokenArgs.Format),
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}
 
-	if err := tmpl.Execute(os.Stdout, nil); err != nil {
-		return fmt.Errorf("failed to render template: %w", err)
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
 	}
 
 	return nil

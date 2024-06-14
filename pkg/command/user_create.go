@@ -1,9 +1,26 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+	"text/template"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type userCreateBind struct {
+	Username string
+	Password string
+	Email    string
+	Fullname string
+	Active   bool
+	Inactive bool
+	Admin    bool
+	Regular  bool
+	Format   string
+}
 
 var (
 	userCreateCmd = &cobra.Command{
@@ -14,36 +31,159 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	userCreateArgs = userCreateBind{}
 )
 
 func init() {
 	userCmd.AddCommand(userCreateCmd)
 
-	userCreateCmd.Flags().String("username", "", "Username for user")
-	_ = viper.BindPFlag("user.create.username", userCreateCmd.Flags().Lookup("username"))
+	userCreateCmd.Flags().StringVar(
+		&userCreateArgs.Username,
+		"username",
+		"",
+		"Username for user",
+	)
 
-	userCreateCmd.Flags().String("password", "", "Password for user")
-	_ = viper.BindPFlag("user.create.password", userCreateCmd.Flags().Lookup("password"))
+	userCreateCmd.Flags().StringVar(
+		&userCreateArgs.Password,
+		"password",
+		"",
+		"Password for user",
+	)
 
-	userCreateCmd.Flags().String("email", "", "Email for user")
-	_ = viper.BindPFlag("user.create.email", userCreateCmd.Flags().Lookup("email"))
+	userCreateCmd.Flags().StringVar(
+		&userCreateArgs.Email,
+		"email",
+		"",
+		"Email for user",
+	)
 
-	userCreateCmd.Flags().String("fullname", "", "Fullname for user")
-	_ = viper.BindPFlag("user.create.fullname", userCreateCmd.Flags().Lookup("fullname"))
+	userCreateCmd.Flags().StringVar(
+		&userCreateArgs.Fullname,
+		"fullname",
+		"",
+		"Fullname for user",
+	)
 
-	userCreateCmd.Flags().Bool("active", false, "Mark user as active")
-	_ = viper.BindPFlag("user.create.active", userCreateCmd.Flags().Lookup("active"))
+	userCreateCmd.Flags().BoolVar(
+		&userCreateArgs.Active,
+		"active",
+		false,
+		"Mark user as active",
+	)
 
-	userCreateCmd.Flags().Bool("inactive", false, "Mark user as inactive")
-	_ = viper.BindPFlag("user.create.inactive", userCreateCmd.Flags().Lookup("inactive"))
+	userCreateCmd.Flags().BoolVar(
+		&userCreateArgs.Inactive,
+		"inactive",
+		false,
+		"Mark user as inactive",
+	)
 
-	userCreateCmd.Flags().Bool("admin", false, "Mark user as admin")
-	_ = viper.BindPFlag("user.create.admin", userCreateCmd.Flags().Lookup("admin"))
+	userCreateCmd.Flags().BoolVar(
+		&userCreateArgs.Admin,
+		"admin",
+		false,
+		"Mark user as admin",
+	)
 
-	userCreateCmd.Flags().Bool("regular", false, "Mark user as regular")
-	_ = viper.BindPFlag("user.create.regular", userCreateCmd.Flags().Lookup("regular"))
+	userCreateCmd.Flags().BoolVar(
+		&userCreateArgs.Regular,
+		"regular",
+		false,
+		"Mark user as regular",
+	)
 }
 
-func userCreateAction(_ *cobra.Command, _ []string, _ *Client) error {
+func userCreateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	body := gopad.CreateUserJSONRequestBody{}
+	changed := false
+
+	if val := userCreateArgs.Username; val != "" {
+		body.Username = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userCreateArgs.Password; val != "" {
+		body.Password = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userCreateArgs.Email; val != "" {
+		body.Email = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userCreateArgs.Fullname; val != "" {
+		body.Fullname = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userCreateArgs.Active; val {
+		body.Active = gopad.ToPtr(true)
+		changed = true
+	}
+
+	if val := userCreateArgs.Inactive; val {
+		body.Active = gopad.ToPtr(false)
+		changed = true
+	}
+
+	if val := userCreateArgs.Admin; val {
+		body.Admin = gopad.ToPtr(true)
+		changed = true
+	}
+
+	if val := userCreateArgs.Regular; val {
+		body.Admin = gopad.ToPtr(false)
+		changed = true
+	}
+
+	if !changed {
+		fmt.Fprintln(os.Stderr, "nothing to create...")
+		return nil
+	}
+
+	tmpl, err := template.New(
+		"_",
+	).Funcs(
+		globalFuncMap,
+	).Funcs(
+		basicFuncMap,
+	).Parse(
+		fmt.Sprintln(userCreateArgs.Format),
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	resp, err := client.CreateUserWithResponse(
+		ccmd.Context(),
+		body,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }

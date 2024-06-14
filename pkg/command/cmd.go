@@ -2,14 +2,16 @@ package command
 
 import (
 	"strings"
+	"text/template"
 
+	"github.com/drone/funcmap"
 	"github.com/gopad/gopad-cli/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 const (
-	defaultServer = "http://localhost:8080"
+	defaultServerAddress = "http://localhost:8080/api/v1"
 )
 
 var (
@@ -24,6 +26,12 @@ var (
 			DisableDefaultCmd: true,
 		},
 	}
+
+	// basicFuncMap provides template helpers provided by library.
+	basicFuncMap = funcmap.Funcs
+
+	// globalFuncMap provides global template helper functions.
+	globalFuncMap = template.FuncMap{}
 )
 
 func init() {
@@ -32,13 +40,17 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("help", "h", false, "Show the help")
 	rootCmd.PersistentFlags().BoolP("version", "v", false, "Print the version")
 
-	rootCmd.PersistentFlags().StringP("server", "s", defaultServer, "API server")
-	viper.SetDefault("server", "")
-	_ = viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
+	rootCmd.PersistentFlags().StringP("server-address", "s", defaultServerAddress, "Server address")
+	_ = viper.BindPFlag("server.address", rootCmd.PersistentFlags().Lookup("server-address"))
 
-	rootCmd.PersistentFlags().StringP("token", "t", "", "API token")
-	viper.SetDefault("token", "")
-	_ = viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+	rootCmd.PersistentFlags().StringP("server-token", "t", "", "Server token")
+	_ = viper.BindPFlag("server.token", rootCmd.PersistentFlags().Lookup("server-token"))
+
+	rootCmd.PersistentFlags().StringP("server-username", "u", "", "Server username")
+	_ = viper.BindPFlag("server.username", rootCmd.PersistentFlags().Lookup("server-username"))
+
+	rootCmd.PersistentFlags().StringP("server-password", "p", "", "Server password")
+	_ = viper.BindPFlag("server.password", rootCmd.PersistentFlags().Lookup("server-password"))
 }
 
 // Run parses the command line arguments and executes the program.
@@ -47,7 +59,7 @@ func Run() error {
 }
 
 func setupConfig() {
-	viper.SetEnvPrefix("gopad_")
+	viper.SetEnvPrefix("gopad")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 }

@@ -1,9 +1,27 @@
 package command
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+	"text/template"
+
+	"github.com/gopad/gopad-go/gopad"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+type userUpdateBind struct {
+	ID       string
+	Username string
+	Password string
+	Email    string
+	Fullname string
+	Active   bool
+	Inactive bool
+	Admin    bool
+	Regular  bool
+	Format   string
+}
 
 var (
 	userUpdateCmd = &cobra.Command{
@@ -14,39 +32,174 @@ var (
 		},
 		Args: cobra.NoArgs,
 	}
+
+	userUpdateArgs = userUpdateBind{}
 )
 
 func init() {
 	userCmd.AddCommand(userUpdateCmd)
 
-	userUpdateCmd.Flags().StringP("id", "i", "", "User ID or slug")
-	_ = viper.BindPFlag("user.update.id", userUpdateCmd.Flags().Lookup("id"))
+	userUpdateCmd.Flags().StringVarP(
+		&userUpdateArgs.ID,
+		"id",
+		"i",
+		"",
+		"User ID or slug",
+	)
 
-	userUpdateCmd.Flags().String("username", "", "Username for user")
-	_ = viper.BindPFlag("user.update.username", userUpdateCmd.Flags().Lookup("username"))
+	userUpdateCmd.Flags().StringVar(
+		&userUpdateArgs.Username,
+		"username",
+		"",
+		"Username for user",
+	)
 
-	userUpdateCmd.Flags().String("password", "", "Password for user")
-	_ = viper.BindPFlag("user.update.password", userUpdateCmd.Flags().Lookup("password"))
+	userUpdateCmd.Flags().StringVar(
+		&userUpdateArgs.Password,
+		"password",
+		"",
+		"Password for user",
+	)
 
-	userUpdateCmd.Flags().String("email", "", "Email for user")
-	_ = viper.BindPFlag("user.update.email", userUpdateCmd.Flags().Lookup("email"))
+	userUpdateCmd.Flags().StringVar(
+		&userUpdateArgs.Email,
+		"email",
+		"",
+		"Email for user",
+	)
 
-	userUpdateCmd.Flags().String("fullname", "", "Fullname for user")
-	_ = viper.BindPFlag("user.update.fullname", userUpdateCmd.Flags().Lookup("fullname"))
+	userUpdateCmd.Flags().StringVar(
+		&userUpdateArgs.Fullname,
+		"fullname",
+		"",
+		"Fullname for user",
+	)
 
-	userUpdateCmd.Flags().Bool("active", false, "Mark user as active")
-	_ = viper.BindPFlag("user.update.active", userUpdateCmd.Flags().Lookup("active"))
+	userUpdateCmd.Flags().BoolVar(
+		&userUpdateArgs.Active,
+		"active",
+		false,
+		"Mark user as active",
+	)
 
-	userUpdateCmd.Flags().Bool("inactive", false, "Mark user as inactive")
-	_ = viper.BindPFlag("user.update.inactive", userUpdateCmd.Flags().Lookup("inactive"))
+	userUpdateCmd.Flags().BoolVar(
+		&userUpdateArgs.Inactive,
+		"inactive",
+		false,
+		"Mark user as inactive",
+	)
 
-	userUpdateCmd.Flags().Bool("admin", false, "Mark user as admin")
-	_ = viper.BindPFlag("user.update.admin", userUpdateCmd.Flags().Lookup("admin"))
+	userUpdateCmd.Flags().BoolVar(
+		&userUpdateArgs.Admin,
+		"admin",
+		false,
+		"Mark user as admin",
+	)
 
-	userUpdateCmd.Flags().Bool("regular", false, "Mark user as regular")
-	_ = viper.BindPFlag("user.update.regular", userUpdateCmd.Flags().Lookup("regular"))
+	userUpdateCmd.Flags().BoolVar(
+		&userUpdateArgs.Regular,
+		"regular",
+		false,
+		"Mark user as regular",
+	)
 }
 
-func userUpdateAction(_ *cobra.Command, _ []string, _ *Client) error {
+func userUpdateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if userShowArgs.ID == "" {
+		return fmt.Errorf("you must provide an ID or a slug")
+	}
+
+	body := gopad.UpdateUserJSONRequestBody{}
+	changed := false
+
+	if val := userUpdateArgs.Username; val != "" {
+		body.Username = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Password; val != "" {
+		body.Password = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Email; val != "" {
+		body.Email = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Fullname; val != "" {
+		body.Fullname = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Active; val {
+		body.Active = gopad.ToPtr(true)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Inactive; val {
+		body.Active = gopad.ToPtr(false)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Admin; val {
+		body.Admin = gopad.ToPtr(true)
+		changed = true
+	}
+
+	if val := userUpdateArgs.Regular; val {
+		body.Admin = gopad.ToPtr(false)
+		changed = true
+	}
+
+	if !changed {
+		fmt.Fprintln(os.Stderr, "nothing to create...")
+		return nil
+	}
+
+	tmpl, err := template.New(
+		"_",
+	).Funcs(
+		globalFuncMap,
+	).Funcs(
+		basicFuncMap,
+	).Parse(
+		fmt.Sprintln(userUpdateArgs.Format),
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	resp, err := client.UpdateUserWithResponse(
+		ccmd.Context(),
+		userUpdateArgs.ID,
+		body,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		if err := tmpl.Execute(
+			os.Stdout,
+			resp.JSON200,
+		); err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
+	case http.StatusForbidden:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+	case http.StatusNotFound:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+	case http.StatusInternalServerError:
+		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+	default:
+		return fmt.Errorf("unknown api response")
+	}
+
 	return nil
 }
