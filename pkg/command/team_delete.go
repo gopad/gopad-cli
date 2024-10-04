@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -56,11 +57,11 @@ func teamDeleteAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	case http.StatusOK:
 		fmt.Fprintln(os.Stderr, "successfully delete")
 	case http.StatusForbidden:
-		return fmt.Errorf(gopad.FromPtr(resp.JSON403.Message))
+		return errors.New(gopad.FromPtr(resp.JSON403.Message))
 	case http.StatusNotFound:
-		return fmt.Errorf(gopad.FromPtr(resp.JSON404.Message))
+		return errors.New(gopad.FromPtr(resp.JSON404.Message))
 	case http.StatusInternalServerError:
-		return fmt.Errorf(gopad.FromPtr(resp.JSON500.Message))
+		return errors.New(gopad.FromPtr(resp.JSON500.Message))
 	default:
 		return fmt.Errorf("unknown api response")
 	}
