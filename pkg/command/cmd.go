@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultServerAddress = "http://localhost:8080/api/v1"
+	defaultServerAddress = "http://localhost:8080/api"
 )
 
 var (
