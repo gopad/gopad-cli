@@ -11,62 +11,59 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// tmplUserShow represents a user within details view.
-var tmplUserShow = "Username: \x1b[33m{{ .Username }} \x1b[0m" + `
+// tmplGroupShow represents a user within details view.
+var tmplGroupShow = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
 ID: {{ .ID }}
-Email: {{ .Email }}
-Fullname: {{ .Fullname }}
-Active: {{ .Active }}
-Admin: {{ .Admin }}
+Name: {{ .Name }}
 Created: {{ .CreatedAt }}
 Updated: {{ .UpdatedAt }}
 `
 
-type userShowBind struct {
+type groupShowBind struct {
 	ID     string
 	Format string
 }
 
 var (
-	userShowCmd = &cobra.Command{
+	groupShowCmd = &cobra.Command{
 		Use:   "show",
-		Short: "Show an user",
+		Short: "Show an group",
 		Run: func(ccmd *cobra.Command, args []string) {
-			Handle(ccmd, args, userShowAction)
+			Handle(ccmd, args, groupShowAction)
 		},
 		Args: cobra.NoArgs,
 	}
 
-	userShowArgs = userShowBind{}
+	groupShowArgs = groupShowBind{}
 )
 
 func init() {
-	userCmd.AddCommand(userShowCmd)
+	groupCmd.AddCommand(groupShowCmd)
 
-	userShowCmd.Flags().StringVarP(
-		&userShowArgs.ID,
+	groupShowCmd.Flags().StringVarP(
+		&groupShowArgs.ID,
 		"id",
 		"i",
 		"",
-		"User ID or slug",
+		"Group ID or slug",
 	)
 
-	userShowCmd.Flags().StringVar(
-		&userShowArgs.Format,
+	groupShowCmd.Flags().StringVar(
+		&groupShowArgs.Format,
 		"format",
-		tmplUserShow,
+		tmplGroupShow,
 		"Custom output format",
 	)
 }
 
-func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
-	if userShowArgs.ID == "" {
+func groupShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if groupShowArgs.ID == "" {
 		return fmt.Errorf("you must provide an ID or a slug")
 	}
 
-	resp, err := client.ShowUserWithResponse(
+	resp, err := client.ShowGroupWithResponse(
 		ccmd.Context(),
-		userShowArgs.ID,
+		groupShowArgs.ID,
 	)
 
 	if err != nil {
@@ -80,7 +77,7 @@ func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(userShowArgs.Format),
+		fmt.Sprintln(groupShowArgs.Format),
 	)
 
 	if err != nil {

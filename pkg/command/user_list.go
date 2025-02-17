@@ -13,7 +13,7 @@ import (
 
 // tmplUserList represents a row within user listing.
 var tmplUserList = "Username: \x1b[33m{{ .Username }} \x1b[0m" + `
-ID: {{ .Id }}
+ID: {{ .ID }}
 Email: {{ .Email }}
 `
 
@@ -74,7 +74,7 @@ func userListAction(ccmd *cobra.Command, _ []string, client *Client) error {
 
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		records := gopad.FromPtr(resp.JSON200.Users)
+		records := resp.JSON200.Users
 
 		if len(records) == 0 {
 			fmt.Fprintln(os.Stderr, "Empty result")
@@ -90,11 +90,21 @@ func userListAction(ccmd *cobra.Command, _ []string, client *Client) error {
 			}
 		}
 	case http.StatusForbidden:
-		return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		if resp.JSON403 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusForbidden))
 	case http.StatusInternalServerError:
-		return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		if resp.JSON500 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusInternalServerError))
+	case http.StatusUnauthorized:
+		return ErrMissingRequiredCredentials
 	default:
-		return fmt.Errorf("unknown api response")
+		return ErrUnknownServerResponse
 	}
 
 	return nil

@@ -94,9 +94,28 @@ func init() {
 		false,
 		"Mark user as regular",
 	)
+
+	userCreateCmd.Flags().StringVar(
+		&userCreateArgs.Format,
+		"format",
+		tmplUserShow,
+		"Format for successful output",
+	)
 }
 
 func userCreateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if userCreateArgs.Username == "" {
+		return fmt.Errorf("you must provide an username")
+	}
+
+	if userCreateArgs.Password == "" {
+		return fmt.Errorf("you must provide a password")
+	}
+
+	if userCreateArgs.Email == "" {
+		return fmt.Errorf("you must provide an email")
+	}
+
 	body := gopad.CreateUserJSONRequestBody{}
 	changed := false
 
@@ -141,7 +160,7 @@ func userCreateAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	}
 
 	if !changed {
-		fmt.Fprintln(os.Stderr, "nothing to create...")
+		fmt.Fprintln(os.Stderr, "Nothing to create...")
 		return nil
 	}
 
@@ -179,11 +198,21 @@ func userCreateAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	case http.StatusUnprocessableEntity:
 		return validationError(resp.JSON422)
 	case http.StatusForbidden:
-		return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		if resp.JSON403 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusForbidden))
 	case http.StatusInternalServerError:
-		return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		if resp.JSON500 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusInternalServerError))
+	case http.StatusUnauthorized:
+		return ErrMissingRequiredCredentials
 	default:
-		return fmt.Errorf("unknown api response")
+		return ErrUnknownServerResponse
 	}
 
 	return nil

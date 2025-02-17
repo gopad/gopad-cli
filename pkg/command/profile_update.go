@@ -87,7 +87,7 @@ func profileUpdateAction(ccmd *cobra.Command, _ []string, client *Client) error 
 	}
 
 	if !changed {
-		fmt.Fprintln(os.Stderr, "nothing to update...")
+		fmt.Fprintln(os.Stderr, "Nothing to update...")
 		return nil
 	}
 
@@ -102,15 +102,25 @@ func profileUpdateAction(ccmd *cobra.Command, _ []string, client *Client) error 
 
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		fmt.Fprintln(os.Stderr, "successfully update")
+		fmt.Fprintln(os.Stderr, "Successfully updated")
 	case http.StatusUnprocessableEntity:
 		return validationError(resp.JSON422)
 	case http.StatusForbidden:
-		return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		if resp.JSON403 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusForbidden))
 	case http.StatusInternalServerError:
-		return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		if resp.JSON500 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusInternalServerError))
+	case http.StatusUnauthorized:
+		return ErrMissingRequiredCredentials
 	default:
-		return fmt.Errorf("unknown api response")
+		return ErrUnknownServerResponse
 	}
 
 	return nil

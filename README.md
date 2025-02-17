@@ -2,6 +2,10 @@
 
 [![General Workflow](https://github.com/gopad/gopad-cli/actions/workflows/general.yml/badge.svg)](https://github.com/gopad/gopad-cli/actions/workflows/general.yml) [![Join the Matrix chat at https://matrix.to/#/#gopad:matrix.org](https://img.shields.io/badge/matrix-%23gopad-7bc9a4.svg)](https://matrix.to/#/#gopad:matrix.org) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/7a3bf170b3524feeb3ed129b02c80759)](https://app.codacy.com/gh/gopad/gopad-cli/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Go Reference](https://pkg.go.dev/badge/github.com/gopad/gopad-cli.svg)](https://pkg.go.dev/github.com/gopad/gopad-cli) [![GitHub Repo](https://img.shields.io/badge/github-repo-yellowgreen)](https://github.com/gopad/gopad-cli)
 
+> [!CAUTION]
+> This project is in active development and does not provide any stable release
+> yet, you can expect breaking changes until our first real release!
+
 Within this repository we are building the command-line client to interact with
 the [Gopad API][api] server.
 

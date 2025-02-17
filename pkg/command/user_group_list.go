@@ -11,62 +11,62 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// tmplUserShow represents a user within details view.
-var tmplUserShow = "Username: \x1b[33m{{ .Username }} \x1b[0m" + `
-ID: {{ .ID }}
-Email: {{ .Email }}
-Fullname: {{ .Fullname }}
-Active: {{ .Active }}
-Admin: {{ .Admin }}
-Created: {{ .CreatedAt }}
-Updated: {{ .UpdatedAt }}
-`
-
-type userShowBind struct {
+type userGroupListBind struct {
 	ID     string
 	Format string
 }
 
+// tmplUserGroupList represents a row within user group listing.
+var tmplUserGroupList = "Slug: \x1b[33m{{ .Group.Slug }} \x1b[0m" + `
+ID: {{ .Group.ID }}
+Name: {{ .Group.Name }}
+Perm: {{ .Perm }}
+`
+
 var (
-	userShowCmd = &cobra.Command{
-		Use:   "show",
-		Short: "Show an user",
+	userGroupListCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List assigned groups for a user",
 		Run: func(ccmd *cobra.Command, args []string) {
-			Handle(ccmd, args, userShowAction)
+			Handle(ccmd, args, userGroupListAction)
 		},
 		Args: cobra.NoArgs,
 	}
 
-	userShowArgs = userShowBind{}
+	userGroupListArgs = userGroupListBind{}
 )
 
 func init() {
-	userCmd.AddCommand(userShowCmd)
+	userGroupCmd.AddCommand(userGroupListCmd)
 
-	userShowCmd.Flags().StringVarP(
-		&userShowArgs.ID,
+	userGroupListCmd.Flags().StringVarP(
+		&userGroupListArgs.ID,
 		"id",
 		"i",
 		"",
 		"User ID or slug",
 	)
 
-	userShowCmd.Flags().StringVar(
-		&userShowArgs.Format,
+	userGroupListCmd.Flags().StringVar(
+		&userGroupListArgs.Format,
 		"format",
-		tmplUserShow,
+		tmplUserGroupList,
 		"Custom output format",
 	)
 }
 
-func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
-	if userShowArgs.ID == "" {
+func userGroupListAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if userGroupListArgs.ID == "" {
 		return fmt.Errorf("you must provide an ID or a slug")
 	}
 
-	resp, err := client.ShowUserWithResponse(
+	resp, err := client.ListUserGroupsWithResponse(
 		ccmd.Context(),
-		userShowArgs.ID,
+		userGroupListArgs.ID,
+		&gopad.ListUserGroupsParams{
+			Limit:  gopad.ToPtr(10000),
+			Offset: gopad.ToPtr(0),
+		},
 	)
 
 	if err != nil {
@@ -80,7 +80,7 @@ func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(userShowArgs.Format),
+		fmt.Sprintln(userGroupListArgs.Format),
 	)
 
 	if err != nil {
@@ -89,11 +89,20 @@ func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		if err := tmpl.Execute(
-			os.Stdout,
-			resp.JSON200,
-		); err != nil {
-			return fmt.Errorf("failed to render template: %w", err)
+		records := resp.JSON200.Groups
+
+		if len(records) == 0 {
+			fmt.Fprintln(os.Stderr, "Empty result")
+			return nil
+		}
+
+		for _, record := range records {
+			if err := tmpl.Execute(
+				os.Stdout,
+				record,
+			); err != nil {
+				return fmt.Errorf("failed to render template: %w", err)
+			}
 		}
 	case http.StatusForbidden:
 		if resp.JSON403 != nil {

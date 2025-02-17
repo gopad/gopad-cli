@@ -16,6 +16,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	// ErrMissingRequiredCredentials defines the error for missing credentials.
+	ErrMissingRequiredCredentials = errors.New("missing credentials")
+
+	// ErrUnknownServerResponse defines the error fot unknown server responses.
+	ErrUnknownServerResponse = errors.New("unknown response from api")
+)
+
 // Client simply wraps the openapi client including authentication.
 type Client struct {
 	*gopad.ClientWithResponses

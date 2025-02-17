@@ -11,66 +11,80 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// tmplUserShow represents a user within details view.
-var tmplUserShow = "Username: \x1b[33m{{ .Username }} \x1b[0m" + `
-ID: {{ .ID }}
-Email: {{ .Email }}
-Fullname: {{ .Fullname }}
-Active: {{ .Active }}
-Admin: {{ .Admin }}
-Created: {{ .CreatedAt }}
-Updated: {{ .UpdatedAt }}
-`
-
-type userShowBind struct {
+type groupUpdateBind struct {
 	ID     string
+	Slug   string
+	Name   string
 	Format string
 }
 
 var (
-	userShowCmd = &cobra.Command{
-		Use:   "show",
-		Short: "Show an user",
+	groupUpdateCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update an group",
 		Run: func(ccmd *cobra.Command, args []string) {
-			Handle(ccmd, args, userShowAction)
+			Handle(ccmd, args, groupUpdateAction)
 		},
 		Args: cobra.NoArgs,
 	}
 
-	userShowArgs = userShowBind{}
+	groupUpdateArgs = groupUpdateBind{}
 )
 
 func init() {
-	userCmd.AddCommand(userShowCmd)
+	groupCmd.AddCommand(groupUpdateCmd)
 
-	userShowCmd.Flags().StringVarP(
-		&userShowArgs.ID,
+	groupUpdateCmd.Flags().StringVarP(
+		&groupUpdateArgs.ID,
 		"id",
 		"i",
 		"",
-		"User ID or slug",
+		"Group ID or slug",
 	)
 
-	userShowCmd.Flags().StringVar(
-		&userShowArgs.Format,
+	groupUpdateCmd.Flags().StringVar(
+		&groupUpdateArgs.Slug,
+		"slug",
+		"",
+		"Slug for group",
+	)
+
+	groupUpdateCmd.Flags().StringVar(
+		&groupUpdateArgs.Name,
+		"name",
+		"",
+		"Name for group",
+	)
+
+	groupUpdateCmd.Flags().StringVar(
+		&groupUpdateArgs.Format,
 		"format",
-		tmplUserShow,
+		tmplGroupShow,
 		"Custom output format",
 	)
 }
 
-func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
-	if userShowArgs.ID == "" {
+func groupUpdateAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if groupUpdateArgs.ID == "" {
 		return fmt.Errorf("you must provide an ID or a slug")
 	}
 
-	resp, err := client.ShowUserWithResponse(
-		ccmd.Context(),
-		userShowArgs.ID,
-	)
+	body := gopad.UpdateGroupJSONRequestBody{}
+	changed := false
 
-	if err != nil {
-		return err
+	if val := groupUpdateArgs.Slug; val != "" {
+		body.Slug = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if val := groupUpdateArgs.Name; val != "" {
+		body.Name = gopad.ToPtr(val)
+		changed = true
+	}
+
+	if !changed {
+		fmt.Fprintln(os.Stderr, "Nothing to create...")
+		return nil
 	}
 
 	tmpl, err := template.New(
@@ -80,11 +94,21 @@ func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(userShowArgs.Format),
+		fmt.Sprintln(groupUpdateArgs.Format),
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
+	}
+
+	resp, err := client.UpdateGroupWithResponse(
+		ccmd.Context(),
+		groupUpdateArgs.ID,
+		body,
+	)
+
+	if err != nil {
+		return err
 	}
 
 	switch resp.StatusCode() {
@@ -95,6 +119,8 @@ func userShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 		); err != nil {
 			return fmt.Errorf("failed to render template: %w", err)
 		}
+	case http.StatusUnprocessableEntity:
+		return validationError(resp.JSON422)
 	case http.StatusForbidden:
 		if resp.JSON403 != nil {
 			return errors.New(gopad.FromPtr(resp.JSON403.Message))

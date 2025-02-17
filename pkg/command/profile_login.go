@@ -106,9 +106,13 @@ func profileLoginAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	case http.StatusUnauthorized:
 		return errors.New(gopad.FromPtr(resp.JSON401.Message))
 	case http.StatusInternalServerError:
-		return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		if resp.JSON500 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusInternalServerError))
 	default:
-		return fmt.Errorf("unknown api response")
+		return ErrUnknownServerResponse
 	}
 
 	return nil

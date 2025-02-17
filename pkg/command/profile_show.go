@@ -13,7 +13,7 @@ import (
 
 // tmplProfileShow represents a profile within details view.
 var tmplProfileShow = "Username: \x1b[33m{{ .Username }} \x1b[0m" + `
-ID: {{ .Id }}
+ID: {{ .ID }}
 Email: {{ .Email }}
 Fullname: {{ .Fullname }}
 Active: {{ .Active }}
@@ -82,11 +82,21 @@ func profileShowAction(ccmd *cobra.Command, _ []string, client *Client) error {
 			return fmt.Errorf("failed to render template: %w", err)
 		}
 	case http.StatusForbidden:
-		return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		if resp.JSON403 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusForbidden))
 	case http.StatusInternalServerError:
-		return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		if resp.JSON500 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusInternalServerError))
+	case http.StatusUnauthorized:
+		return ErrMissingRequiredCredentials
 	default:
-		return fmt.Errorf("unknown api response")
+		return ErrUnknownServerResponse
 	}
 
 	return nil

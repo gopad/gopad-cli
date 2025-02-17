@@ -10,43 +10,58 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type userDeleteBind struct {
-	ID string
+type groupUserRemoveBind struct {
+	ID   string
+	User string
 }
 
 var (
-	userDeleteCmd = &cobra.Command{
-		Use:   "delete",
-		Short: "Delete an user",
+	groupUserRemoveCmd = &cobra.Command{
+		Use:   "remove",
+		Short: "Remove user from group",
 		Run: func(ccmd *cobra.Command, args []string) {
-			Handle(ccmd, args, userDeleteAction)
+			Handle(ccmd, args, groupUserRemoveAction)
 		},
 		Args: cobra.NoArgs,
 	}
 
-	userDeleteArgs = userDeleteBind{}
+	groupUserRemoveArgs = groupUserRemoveBind{}
 )
 
 func init() {
-	userCmd.AddCommand(userDeleteCmd)
+	groupUserCmd.AddCommand(groupUserRemoveCmd)
 
-	userDeleteCmd.Flags().StringVarP(
-		&userDeleteArgs.ID,
+	groupUserRemoveCmd.Flags().StringVarP(
+		&groupUserRemoveArgs.ID,
 		"id",
 		"i",
+		"",
+		"Group ID or slug",
+	)
+
+	groupUserRemoveCmd.Flags().StringVar(
+		&groupUserRemoveArgs.User,
+		"user",
 		"",
 		"User ID or slug",
 	)
 }
 
-func userDeleteAction(ccmd *cobra.Command, _ []string, client *Client) error {
-	if userDeleteArgs.ID == "" {
+func groupUserRemoveAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if groupUserRemoveArgs.ID == "" {
 		return fmt.Errorf("you must provide an ID or a slug")
 	}
 
-	resp, err := client.DeleteUserWithResponse(
+	if groupUserRemoveArgs.User == "" {
+		return fmt.Errorf("you must provide a user ID or a slug")
+	}
+
+	resp, err := client.DeleteGroupFromUserWithResponse(
 		ccmd.Context(),
-		userDeleteArgs.ID,
+		groupUserRemoveArgs.ID,
+		gopad.DeleteGroupFromUserJSONRequestBody{
+			User: groupUserRemoveArgs.User,
+		},
 	)
 
 	if err != nil {
@@ -55,7 +70,9 @@ func userDeleteAction(ccmd *cobra.Command, _ []string, client *Client) error {
 
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		fmt.Fprintln(os.Stderr, "Successfully deleted")
+		fmt.Fprintln(os.Stderr, gopad.FromPtr(resp.JSON200.Message))
+	case http.StatusPreconditionFailed:
+		return errors.New(gopad.FromPtr(resp.JSON412.Message))
 	case http.StatusForbidden:
 		if resp.JSON403 != nil {
 			return errors.New(gopad.FromPtr(resp.JSON403.Message))

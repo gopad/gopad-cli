@@ -11,44 +11,44 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// tmplTeamList represents a row within user listing.
-var tmplTeamList = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
-ID: {{ .Id }}
+// tmplgroupList represents a row within user listing.
+var tmplgroupList = "Slug: \x1b[33m{{ .Slug }} \x1b[0m" + `
+ID: {{ .ID }}
 Name: {{ .Name }}
 `
 
-type teamListBind struct {
+type groupListBind struct {
 	Format string
 }
 
 var (
-	teamListCmd = &cobra.Command{
+	groupListCmd = &cobra.Command{
 		Use:   "list",
-		Short: "List all teams",
+		Short: "List all groups",
 		Run: func(ccmd *cobra.Command, args []string) {
-			Handle(ccmd, args, teamListAction)
+			Handle(ccmd, args, groupListAction)
 		},
 		Args: cobra.NoArgs,
 	}
 
-	teamListArgs = teamListBind{}
+	groupListArgs = groupListBind{}
 )
 
 func init() {
-	teamCmd.AddCommand(teamListCmd)
+	groupCmd.AddCommand(groupListCmd)
 
-	teamListCmd.Flags().StringVar(
-		&teamListArgs.Format,
+	groupListCmd.Flags().StringVar(
+		&groupListArgs.Format,
 		"format",
-		tmplTeamList,
+		tmplgroupList,
 		"Custom output format",
 	)
 }
 
-func teamListAction(ccmd *cobra.Command, _ []string, client *Client) error {
-	resp, err := client.ListTeamsWithResponse(
+func groupListAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	resp, err := client.ListGroupsWithResponse(
 		ccmd.Context(),
-		&gopad.ListTeamsParams{
+		&gopad.ListGroupsParams{
 			Limit:  gopad.ToPtr(10000),
 			Offset: gopad.ToPtr(0),
 		},
@@ -65,7 +65,7 @@ func teamListAction(ccmd *cobra.Command, _ []string, client *Client) error {
 	).Funcs(
 		basicFuncMap,
 	).Parse(
-		fmt.Sprintln(teamListArgs.Format),
+		fmt.Sprintln(groupListArgs.Format),
 	)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func teamListAction(ccmd *cobra.Command, _ []string, client *Client) error {
 
 	switch resp.StatusCode() {
 	case http.StatusOK:
-		records := gopad.FromPtr(resp.JSON200.Teams)
+		records := resp.JSON200.Groups
 
 		if len(records) == 0 {
 			fmt.Fprintln(os.Stderr, "Empty result")
@@ -90,11 +90,21 @@ func teamListAction(ccmd *cobra.Command, _ []string, client *Client) error {
 			}
 		}
 	case http.StatusForbidden:
-		return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		if resp.JSON403 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON403.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusForbidden))
 	case http.StatusInternalServerError:
-		return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		if resp.JSON500 != nil {
+			return errors.New(gopad.FromPtr(resp.JSON500.Message))
+		}
+
+		return errors.New(http.StatusText(http.StatusInternalServerError))
+	case http.StatusUnauthorized:
+		return ErrMissingRequiredCredentials
 	default:
-		return fmt.Errorf("unknown api response")
+		return ErrUnknownServerResponse
 	}
 
 	return nil

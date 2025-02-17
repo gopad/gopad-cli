@@ -10,43 +10,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type userDeleteBind struct {
+type groupDeleteBind struct {
 	ID string
 }
 
 var (
-	userDeleteCmd = &cobra.Command{
+	groupDeleteCmd = &cobra.Command{
 		Use:   "delete",
-		Short: "Delete an user",
+		Short: "Delete an group",
 		Run: func(ccmd *cobra.Command, args []string) {
-			Handle(ccmd, args, userDeleteAction)
+			Handle(ccmd, args, groupDeleteAction)
 		},
 		Args: cobra.NoArgs,
 	}
 
-	userDeleteArgs = userDeleteBind{}
+	groupDeleteArgs = groupDeleteBind{}
 )
 
 func init() {
-	userCmd.AddCommand(userDeleteCmd)
+	groupCmd.AddCommand(groupDeleteCmd)
 
-	userDeleteCmd.Flags().StringVarP(
-		&userDeleteArgs.ID,
+	groupDeleteCmd.Flags().StringVarP(
+		&groupDeleteArgs.ID,
 		"id",
 		"i",
 		"",
-		"User ID or slug",
+		"Group ID or slug",
 	)
 }
 
-func userDeleteAction(ccmd *cobra.Command, _ []string, client *Client) error {
-	if userDeleteArgs.ID == "" {
+func groupDeleteAction(ccmd *cobra.Command, _ []string, client *Client) error {
+	if groupDeleteArgs.ID == "" {
 		return fmt.Errorf("you must provide an ID or a slug")
 	}
 
-	resp, err := client.DeleteUserWithResponse(
+	resp, err := client.DeleteGroupWithResponse(
 		ccmd.Context(),
-		userDeleteArgs.ID,
+		groupDeleteArgs.ID,
 	)
 
 	if err != nil {
