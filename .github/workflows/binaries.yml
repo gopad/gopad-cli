@@ -61,6 +61,6 @@ jobs:
         id: testing
         if: startsWith(github.ref, 'refs/heads/')
         run: |
-          aws s3 sync dist/ s3://dl.gopad.eu/api/testing/
+          aws s3 sync dist/ s3://dl.gopad.eu/cli/testing/
 
 ...
