@@ -55,7 +55,7 @@ jobs:
         id: version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          aws s3 sync dist/ s3://dl.gopad.eu/api/${{ github.ref_name }}/
+          aws s3 sync dist/ s3://dl.gopad.eu/cli/${{ github.ref_name }}/
 
       - name: Upload testing
         id: testing
