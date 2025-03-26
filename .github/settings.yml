@@ -1,7 +1,7 @@
 ---
 repository:
   name: gopad-cli
-  description: "Gopad: CLI Client"
+  description: Commandline client for Gopad
   homepage: https://gopad.eu
   topics: gopad, etherpad, client, cli, go, golang
 
