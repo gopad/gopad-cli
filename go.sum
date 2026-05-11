@@ -214,8 +214,8 @@ github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 h1:z2ogiKUYzX5Is6zr/v
 github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/gopad/gopad-go v1.20.0 h1:nBBy1dJ46psOAIrk6CMzkGM/eZ00ssXvLJjHZwte810=
-github.com/gopad/gopad-go v1.20.0/go.mod h1:MWar7xdJ67DLxxfmTRsiYhAwuFCOQJvRIQ02+jFMXcQ=
+github.com/gopad/gopad-go v1.21.0 h1:sEYF0RkrkMYaGrHGjnCZAiaxPBF/xkSIJtgwrOfobWQ=
+github.com/gopad/gopad-go v1.21.0/go.mod h1:l6v2cgjfFsZl/h62ujKATJZAy335tXep0lrnXGcwcdk=
 github.com/gordonklaus/ineffassign v0.2.0 h1:Uths4KnmwxNJNzq87fwQQDDnbNb7De00VOk9Nu0TySs=
 github.com/gordonklaus/ineffassign v0.2.0/go.mod h1:TIpymnagPSexySzs7F9FnO1XFTy8IT3a59vmZp5Y9Lw=
 github.com/gostaticanalysis/analysisutil v0.7.1 h1:ZMCjoue3DtDWQ5WyU16YbjbQEQ3VuzwxALrpYd+HeKk=
